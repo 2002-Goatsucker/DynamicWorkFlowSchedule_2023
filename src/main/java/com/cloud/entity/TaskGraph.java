@@ -17,7 +17,6 @@ public class TaskGraph implements Cloneable{
     //记录全部节点
     Vertex[] vertices;
 
-    Random random = new Random(ReadOnlyData.seed);
 
     private boolean isBroken = false;
 
@@ -44,7 +43,7 @@ public class TaskGraph implements Cloneable{
     }
 
     //拓扑排序（随机拓扑）
-    public int[] TopologicalSorting() {
+    public int[] TopologicalSorting(Random random) {
         if(!isBroken) {
             isBroken = true;
             List<Integer> list = new LinkedList<>();
@@ -73,7 +72,7 @@ public class TaskGraph implements Cloneable{
                 if (index != -1) temp = vertices[index];
                 else temp = start;
                 if (index != -1) {
-                    addRandomNum(list, temp.id);
+                    addRandomNum(list, temp.id, random);
                 }
                 for (Vertex vertex : temp.next) {
                     //伪删除前驱节点
@@ -92,12 +91,12 @@ public class TaskGraph implements Cloneable{
             return ans;
         }else {
             TaskGraph graph = clone();
-            return graph.TopologicalSorting();
+            return graph.TopologicalSorting(random);
         }
     }
 
     //辅助方法
-    private void addRandomNum(List<Integer> list,int index){
+    private void addRandomNum(List<Integer> list,int index, Random random){
         List<Vertex> fa=vertices[index].fa;
         List<Vertex> next=vertices[index].next;
         int start = 0;

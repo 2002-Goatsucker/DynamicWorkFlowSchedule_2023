@@ -16,7 +16,7 @@ public class ChromosomeUtils {
 
     //获取初始化染色体，需要对应的图，需要可以使用的机器列表，一半概率随机选取ins，一半概率使用同一种机器
     public static Chromosome getInitialChromosome(TaskGraph graph, List<Integer> accessibleIns, Random random) {
-        int[] order = graph.TopologicalSorting();
+        int[] order = graph.TopologicalSorting(random);
         int[] ins = new int[order.length];
         int num = random.nextInt(10);
         if (num < 5) {
