@@ -36,7 +36,7 @@ public class Application {
 
         //获取结果
         List<List<Chromosome>> rank = (List<List<Chromosome>>) AlgorithmThreadPool.getResult("1").map.get("rank");
-
+        IOUtils.writeToFile(rank,"D:\\result.txt");
         System.out.println();
         AlgorithmThreadPool.shutdown();
 
