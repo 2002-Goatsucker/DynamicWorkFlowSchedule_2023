@@ -5,10 +5,7 @@ import com.cloud.entity.ReadOnlyData;
 import com.cloud.entity.Task;
 import com.cloud.entity.TaskGraph;
 
-import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.List;
-import java.util.Random;
+import java.util.*;
 
 import static com.cloud.entity.ReadOnlyData.insNum;
 
@@ -235,5 +232,42 @@ public class ChromosomeUtils {
             }
         }
         return max_after_communication_time;
+    }
+
+    public static List<Double> getHV(List<List<Chromosome>> list){
+        double maxMakeSpan = 0;
+        double maxCost = 0;
+        double minMakeSpan = Integer.MAX_VALUE;
+        double minCost = Integer.MAX_VALUE;
+        List<Double> ans = new LinkedList<>();
+        //找到所有代中，最大和最小的值
+        for(List<Chromosome> chromosomes:list){
+            for(Chromosome chromosome:chromosomes){
+                maxMakeSpan = Math.max(maxMakeSpan,chromosome.getMakeSpan());
+                maxCost = Math.max(maxCost,chromosome.getCost());
+                minMakeSpan = Math.min(minCost,chromosome.getMakeSpan());
+                minCost = Math.min(minCost,chromosome.getCost());
+            }
+        }
+        StringBuilder str = new StringBuilder();
+        for(List<Chromosome> chromosomes:list){
+            chromosomes.sort(Comparator.comparingDouble(Chromosome::getMakeSpan));
+            double makespan[]=new double[chromosomes.size()];
+            double cost[] = new double[chromosomes.size()];
+            //按照makespan的顺序计算HV
+            for(int i=0;i<chromosomes.size();++i){
+                double makespan_i = chromosomes.get(i).getMakeSpan();
+                double cost_i = chromosomes.get(i).getCost();
+                makespan[i] = (makespan_i-minMakeSpan)/(maxMakeSpan-minMakeSpan);
+                cost[i] = (cost_i-minCost)/(maxCost-minCost);
+            }
+            double HV = (1.1-makespan[0])*(1.1-cost[0]);
+            for(int i=1;i<makespan.length;++i){
+                HV+=(1.1-makespan[i])*(cost[i-1]-cost[i]);
+            }
+            ans.add(HV);
+        }
+//        WriterUtils.write("src\\main\\resources\\output\\ParetoFront.txt",str.toString());
+        return ans;
     }
 }

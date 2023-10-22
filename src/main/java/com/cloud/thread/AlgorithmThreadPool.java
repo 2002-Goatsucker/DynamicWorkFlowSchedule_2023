@@ -16,11 +16,11 @@ public class AlgorithmThreadPool{
     private static final Map<String, CompletableFuture<Result>> results = new HashMap<>();
 
     //使用的线程池
-    private static final ExecutorService threadPool = new ThreadPoolExecutor(5, 15, 1, TimeUnit.MINUTES, new ArrayBlockingQueue<>(30));
+    private static final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(4, 8, 1, TimeUnit.MINUTES, new ArrayBlockingQueue<>(30));
 
 
     //submit一个算法后，线程池会自动处理，将结果放到result中，该方法是阻塞式的
-    public static void submit(Algorithm algorithm){
+    public synchronized static void submit(Algorithm algorithm){
         //异步执行
         CompletableFuture<Result> completableFuture = CompletableFuture.supplyAsync(algorithm::execute, threadPool);
         if(results.containsKey(algorithm.name)){

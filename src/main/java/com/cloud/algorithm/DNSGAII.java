@@ -1,6 +1,10 @@
 package com.cloud.algorithm;
 
+import com.cloud.algorithm.change.InsAvailChange;
+import com.cloud.algorithm.repair.CrashRandomRepair;
 import com.cloud.algorithm.standard.Algorithm;
+import com.cloud.algorithm.standard.Change;
+import com.cloud.algorithm.standard.Repair;
 import com.cloud.entity.*;
 import com.cloud.utils.ChromosomeUtils;
 import com.cloud.utils.IOUtils;
@@ -19,12 +23,15 @@ public class DNSGAII extends Algorithm {
     public List<Chromosome> fa = new LinkedList<>();
     public List<Chromosome> son = new LinkedList<>();
     public List<Integer> accessibleIns = new LinkedList<>();
+    public List<Integer> disabledIns = new LinkedList<>();
     public TaskGraph graph;
     public int insNum;
     public Task[] tasks = new Task[0];
     public List<List<Chromosome>> rank;
     public List<List<Chromosome>> all = new LinkedList<>();
-    public Random random = new Random(ReadOnlyData.seed);
+    public Random random;
+    public Change change;
+    public Repair repair;
 
     public DNSGAII(String name) {
         super(name);
@@ -33,11 +40,20 @@ public class DNSGAII extends Algorithm {
     @Override
     public Result execute() {
         init();
+        if(change==null) change = new InsAvailChange();
+        if(repair==null) repair = new CrashRandomRepair();
         for(int i=0;i<generation;++i){
+            if(change instanceof InsAvailChange){
+                if(InsAvailChange.generations.contains(i)) {
+                    change.change(this);
+                    repair.repair(this);
+                }
+            }
             iterate();
         }
+
         Result result = new Result();
-        result.map.put("rank", rank);
+//        result.map.put("HV", all);
         return result;
     }
 

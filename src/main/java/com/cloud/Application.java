@@ -5,8 +5,14 @@ import com.cloud.entity.Chromosome;
 import com.cloud.entity.ReadOnlyData;
 import com.cloud.entity.Type;
 import com.cloud.thread.AlgorithmThreadPool;
+import com.cloud.utils.ChromosomeUtils;
 import com.cloud.utils.IOUtils;
+import com.cloud.utils.PythonUtils;
+
+import java.util.ArrayList;
+import java.util.LinkedList;
 import java.util.List;
+import java.util.Random;
 
 @SuppressWarnings("unchecked")
 public class Application {
@@ -24,20 +30,49 @@ public class Application {
         types[7] = new Type(7, 30/8.0, 131072000, 0.9);
         ReadOnlyData.types = types;
 
+        List<DNSGAII> dnsgaiis = new LinkedList<>();
         //创建算法步骤
-        DNSGAII dnsgaii = new DNSGAII("1");
-        initIns(dnsgaii.accessibleIns);
-
+        for(int i=0;i<30;++i){
+            DNSGAII dnsgaii = new DNSGAII(i+"");
+            dnsgaii.random = new Random(i);
+            initIns(dnsgaii.accessibleIns);
+            dnsgaiis.add(dnsgaii);
+        }
 
         //提交算法
-        AlgorithmThreadPool.submit(dnsgaii);
+        for(DNSGAII dnsgaii:dnsgaiis){
+            AlgorithmThreadPool.submit(dnsgaii);
+        }
 
 
 
-        //获取结果
-        List<List<Chromosome>> rank = (List<List<Chromosome>>) AlgorithmThreadPool.getResult("1").map.get("rank");
-        IOUtils.writeToFile(rank,"D:\\result.txt");
-        System.out.println();
+//        List<Double> mean_hv = new ArrayList<>();
+//        for(int i=0;i<30;++i) {
+//            //获取结果
+//            List<List<Chromosome>> all = (List<List<Chromosome>>) AlgorithmThreadPool.getResult(i+"").map.get("HV");
+//            List<Double> hv = ChromosomeUtils.getHV(all);
+//            if(mean_hv.isEmpty()){
+//                for(Double num:hv){
+//                    mean_hv.add(num);
+//                }
+//            }else {
+//                for(int j=0;j<hv.size();++j){
+//                    mean_hv.set(j, mean_hv.get(j) + hv.get(j));
+//                }
+//            }
+//        }
+//
+//        String[] info = new String[mean_hv.size()];
+//        StringBuilder cmd = new StringBuilder("DrawHV.py");
+//        for(int i=0;i<mean_hv.size();++i){
+//            info[i] = "" + mean_hv.get(i)/30;
+//            cmd.append(" ").append(mean_hv.get(i) / 30);
+//        }
+//        System.out.println(cmd);
+//
+//        PythonUtils.execute("DrawHV.py", info);
+
+//        IOUtils.writeHVToFile(mean_hv,"src\\main\\resources\\results\\hv.txt");
         AlgorithmThreadPool.shutdown();
 
     }
