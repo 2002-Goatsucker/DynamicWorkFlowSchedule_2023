@@ -32,17 +32,14 @@ public class Application {
 
         List<DNSGAII> dnsgaiis = new LinkedList<>();
         //创建算法步骤
-        for(int i=0;i<30;++i){
-            DNSGAII dnsgaii = new DNSGAII(i+"");
-            dnsgaii.random = new Random(i);
-            initIns(dnsgaii.accessibleIns);
-            dnsgaiis.add(dnsgaii);
-        }
+        DNSGAII dnsgaii = new DNSGAII("0");
+        dnsgaii.random = new Random(1);
+        initIns(dnsgaii.accessibleIns);
 
-        //提交算法
-        for(DNSGAII dnsgaii:dnsgaiis){
-            AlgorithmThreadPool.submit(dnsgaii);
-        }
+        AlgorithmThreadPool.submit(dnsgaii);
+        List<Chromosome> f = (List<Chromosome>) AlgorithmThreadPool.getResult("0").map.get("front");
+        IOUtils.writeFrontToFile(f,"src/main/resources/result/result_nsgaii.txt");
+
 
 
 

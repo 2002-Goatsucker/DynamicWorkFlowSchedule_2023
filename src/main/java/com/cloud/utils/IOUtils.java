@@ -41,6 +41,20 @@ public class IOUtils {
         }
     }
 
+
+    public static void writeFrontToFile(List<Chromosome> front, String path){
+        try(BufferedWriter out = new BufferedWriter(new FileWriter(path)))
+        {
+
+            for(Chromosome chromosome:front){
+                out.write(chromosome.getMakeSpan() + " " + chromosome.getCost()+"\n");
+            }
+
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static void writeHVToFile(List<Double> hv, String path){
         try(BufferedWriter out = new BufferedWriter(new FileWriter(path)))
         {

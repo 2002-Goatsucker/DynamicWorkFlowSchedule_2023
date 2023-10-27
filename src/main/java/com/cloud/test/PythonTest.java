@@ -6,7 +6,6 @@ import java.util.List;
 
 public class PythonTest {
     public static void main(String[] args) {
-        List<String> result = PythonUtils.execute("test.py");
-        System.out.println(result);
+
     }
 }

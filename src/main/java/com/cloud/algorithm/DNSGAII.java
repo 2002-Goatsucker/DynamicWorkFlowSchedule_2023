@@ -53,7 +53,7 @@ public class DNSGAII extends Algorithm {
         }
 
         Result result = new Result();
-//        result.map.put("HV", all);
+        result.map.put("front", rank.get(0));
         return result;
     }
 

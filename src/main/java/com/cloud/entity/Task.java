@@ -12,10 +12,13 @@ public class Task implements Cloneable{
     private double finalTime;
     private List<Integer> successor;
     private List<Integer> predecessor;
+    private double cmswcRank;
+    private int insType;
     public Task(int index){
         this.index = index;
         successor=new LinkedList<>();
         predecessor=new LinkedList<>();
+        insType = -1;
     }
 
     public int getIndex() {
@@ -86,6 +89,24 @@ public class Task implements Cloneable{
         return successor;
     }
 
+    //********************关于CMSWC算法的部分，其他代码没动******************************
+    public double getCmswcRank() {
+        return cmswcRank;
+    }
+
+    public void setCmswcRank(double cmswcRank) {
+        this.cmswcRank = cmswcRank;
+    }
+
+    public int getInsType() {
+        return insType;
+    }
+
+    public void setInsType(int insType) {
+        this.insType = insType;
+    }
+
+    //******************************************************************************
     @Override
     public Task clone() {
         Task task=new Task(index);
@@ -94,6 +115,9 @@ public class Task implements Cloneable{
         task.setReferTime(referTime);
         task.setSuccessor(successor);
         task.setPredecessor(predecessor);
+        //加上两个属性，不影响原代码
+        task.setCmswcRank(cmswcRank);
+        task.setInsType(insType);
         return task;
     }
 }
