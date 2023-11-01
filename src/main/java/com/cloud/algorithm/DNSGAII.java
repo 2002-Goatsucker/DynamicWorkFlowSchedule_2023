@@ -42,6 +42,7 @@ public class DNSGAII extends Algorithm {
         init();
         if(change==null) change = new InsAvailChange();
         if(repair==null) repair = new CrashRandomRepair();
+        initPopulation();
         for(int i=0;i<generation;++i){
             if(change instanceof InsAvailChange){
                 if(InsAvailChange.generations.contains(i)) {
@@ -58,7 +59,6 @@ public class DNSGAII extends Algorithm {
     }
 
     public void iterate(){
-        initPopulation();
         doProduce();
         doSort();
         doEliminate();

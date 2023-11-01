@@ -1,7 +1,6 @@
 package com.cloud.algorithm.repair;
 
 import com.cloud.algorithm.DNSGAII;
-import com.cloud.algorithm.change.InsAvailChange;
 import com.cloud.algorithm.standard.Algorithm;
 import com.cloud.algorithm.standard.Repair;
 import com.cloud.entity.Chromosome;
