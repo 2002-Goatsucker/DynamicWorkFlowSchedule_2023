@@ -7,7 +7,6 @@ public class TaskGraph implements Cloneable{
     //graph的大小，不含虚拟头节点
     private int size;
 
-
     //虚拟头节点
     Vertex start;
 
@@ -16,6 +15,8 @@ public class TaskGraph implements Cloneable{
 
     //记录全部节点
     Vertex[] vertices;
+
+    int depth = 0;
 
 
     private boolean isBroken = false;

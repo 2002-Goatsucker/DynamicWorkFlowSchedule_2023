@@ -1,16 +1,14 @@
 package com.cloud;
 
 import com.cloud.algorithm.DNSGAII;
-import com.cloud.entity.Chromosome;
+import com.cloud.algorithm.DNSGAIIB;
+import com.cloud.algorithm.standard.Algorithm;
 import com.cloud.entity.ReadOnlyData;
 import com.cloud.entity.Type;
 import com.cloud.thread.AlgorithmThreadPool;
-import com.cloud.utils.ChromosomeUtils;
 import com.cloud.utils.IOUtils;
-import com.cloud.utils.PythonUtils;
 
 import java.util.ArrayList;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Random;
 
@@ -29,19 +27,49 @@ public class Application {
         types[6] = new Type(6, 15/8.0, 131072000, 0.45);
         types[7] = new Type(7, 30/8.0, 131072000, 0.9);
         ReadOnlyData.types = types;
-
-        List<DNSGAII> dnsgaiis = new LinkedList<>();
         //创建算法步骤
-        DNSGAII dnsgaii = new DNSGAII("0");
-        dnsgaii.random = new Random(1);
-        initIns(dnsgaii.accessibleIns);
+//        DNSGAII dnsgaii = new DNSGAII("0");
+//        dnsgaii.random = new Random(1);
+//        initIns(dnsgaii.accessibleIns);
+        List<Algorithm> list = new ArrayList<>();
+        for(int i=0;i<1;++i){
+            DNSGAII dnsgaii = new DNSGAII("dnsgaii"+i);
+            initIns(dnsgaii.accessibleIns);
+            dnsgaii.random = new Random(i);
 
-        AlgorithmThreadPool.submit(dnsgaii);
-        List<Chromosome> f = (List<Chromosome>) AlgorithmThreadPool.getResult("0").map.get("front");
-        IOUtils.writeFrontToFile(f,"src/main/resources/result/result_nsgaii.txt");
+            DNSGAIIB dnsgaiib = new DNSGAIIB("dnsgaiib"+i);
+            initIns(dnsgaiib.accessibleIns);
+            dnsgaiib.random = new Random(i);
+
+            AlgorithmThreadPool.submit(dnsgaii);
+            AlgorithmThreadPool.submit(dnsgaiib);
+        }
+        List<Double> common = new ArrayList<>();
+        List<Double> common_mutate = new ArrayList<>();
+
+        for(int i=0;i<1;++i) {
+            List<Double> all1 = (List<Double>) AlgorithmThreadPool.getResult("dnsgaii"+i).map.get("hv");
+            List<Double> all2 = (List<Double>) AlgorithmThreadPool.getResult("dnsgaiib"+i).map.get("hv");
+            if(common.isEmpty()) common.addAll(all1);
+            else {
+                for(int j=0;j<common.size();++j){
+                    common.set(j,common.get(j)+all1.get(j));
+                }
+            }
+            if(common_mutate.isEmpty()) common_mutate.addAll(all2);
+            else {
+                for(int j=0;j<common_mutate.size();++j){
+                    common_mutate.set(j,common_mutate.get(j)+all2.get(j));
+                }
+            }
+        }
+
+        common.replaceAll(aDouble -> aDouble / 10);
+        common_mutate.replaceAll(aDouble -> aDouble / 10);
 
 
-
+        IOUtils.writeHVToFile(common,"src/main/resources/result/result_nsgaii.txt");
+        IOUtils.writeHVToFile(common_mutate,"src/main/resources/result/result_nsgaiib.txt");
 
 //        List<Double> mean_hv = new ArrayList<>();
 //        for(int i=0;i<30;++i) {
@@ -76,11 +104,13 @@ public class Application {
 
 
     public static void initIns(List<Integer> accessibleIns){
-        for(int i=0;i<8;++i){
-            String conf = "ins.quantity.type"+i;
-            int quantity = IOUtils.readIntProperties("dnsgaii-random",conf);
-            for(int j=0;j<quantity;++j){
-                ReadOnlyData.insToType.add(i);
+        if(ReadOnlyData.insToType.isEmpty()) {
+            for (int i = 0; i < 8; ++i) {
+                String conf = "ins.quantity.type" + i;
+                int quantity = IOUtils.readIntProperties("dnsgaii-random", conf);
+                for (int j = 0; j < quantity; ++j) {
+                    ReadOnlyData.insToType.add(i);
+                }
             }
         }
         for(int ins=0;ins<ReadOnlyData.insToType.size();++ins){

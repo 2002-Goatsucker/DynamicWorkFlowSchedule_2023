@@ -2,6 +2,7 @@ package com.cloud.entity;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Objects;
 
 public class Task implements Cloneable{
     private int index;
@@ -13,6 +14,7 @@ public class Task implements Cloneable{
     private List<Integer> successor;
     private List<Integer> predecessor;
     private double cmswcRank;
+    private int depth;
     private int insType;
     public Task(int index){
         this.index = index;
@@ -119,5 +121,26 @@ public class Task implements Cloneable{
         task.setCmswcRank(cmswcRank);
         task.setInsType(insType);
         return task;
+    }
+
+    @Override
+    public boolean equals(Object o) {
+        if (this == o) return true;
+        if (o == null || getClass() != o.getClass()) return false;
+        Task task = (Task) o;
+        return index == task.index;
+    }
+
+    @Override
+    public int hashCode() {
+        return Objects.hash(index);
+    }
+
+    public int getDepth() {
+        return depth;
+    }
+
+    public void setDepth(int depth) {
+        this.depth = depth;
     }
 }

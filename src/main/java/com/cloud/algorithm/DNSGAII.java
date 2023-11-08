@@ -26,7 +26,7 @@ public class DNSGAII extends Algorithm {
     public List<Integer> disabledIns = new LinkedList<>();
     public TaskGraph graph;
     public int insNum;
-    public Task[] tasks = new Task[0];
+    public Task[] tasks;
     public List<List<Chromosome>> rank;
     public List<List<Chromosome>> all = new LinkedList<>();
     public Random random;
@@ -53,8 +53,9 @@ public class DNSGAII extends Algorithm {
             iterate();
         }
 
+        List<Double> hv = ChromosomeUtils.getHV(all);
         Result result = new Result();
-        result.map.put("front", rank.get(0));
+        result.map.put("hv", hv);
         return result;
     }
 
@@ -109,7 +110,6 @@ public class DNSGAII extends Algorithm {
             for (int i = 0; i < size; ++i) {
                 tasks[i] = new Task(i);
             }
-
             SAXReader reader = new SAXReader();
             Document document = reader.read(DNSGAII.class.getClassLoader().getResource(bundle.getString("file.taskGraph.path")));
             Element root = document.getRootElement();
@@ -119,6 +119,8 @@ public class DNSGAII extends Algorithm {
                     for (Element parent : child.elements()) {
                         int ver1 = Integer.parseInt(parent.attributeValue("ref").substring(2));
                         graph.addEdge(ver1, ver2);
+                        tasks[ver1].getSuccessor().add(ver2);
+                        tasks[ver2].getPredecessor().add(ver1);
                     }
                 } else if (child.getName().equals("job")) {
                     int id = Integer.parseInt(child.attributeValue("id").substring(2));
@@ -142,12 +144,29 @@ public class DNSGAII extends Algorithm {
         }
     }
 
-    public void InitPopulation() {
-        while (fa.size() < size) {
-            Chromosome chromosome = ChromosomeUtils.getInitialChromosome(graph, accessibleIns, random);
-            if (!fa.contains(chromosome)) fa.add(chromosome);
-        }
-    }
+//    private void calculateDepth(Task[] tasks) {
+//        int[] in = new int[tasks.length];
+//        Queue<Task> queue = new ArrayDeque<>();
+//        for(int i=0;i<tasks.length;++i){
+//            in[i] = tasks[i].getPredecessor().size();
+//            if(in[i]==0) {
+//                queue.add(tasks[i]);
+//                tasks[i].setDepth(0);
+//            }
+//        }
+//
+//        while (!queue.isEmpty()){
+//            Task task = queue.poll();
+//            for(int i:task.getSuccessor()){
+//                Task t = tasks[i];
+//                t.setDepth(Math.max(t.getDepth(), task.getDepth()+1));
+//                queue.add(t);
+//            }
+//        }
+//
+//
+//    }
+
 
     public void doProduce() {
         try {
@@ -244,7 +263,7 @@ public class DNSGAII extends Algorithm {
         poor.addBetter();
     }
 
-    private boolean hasBetter(List<Chromosome> list) {
+    public boolean hasBetter(List<Chromosome> list) {
         for (Chromosome chromosome : list) {
             if (chromosome.getBetterNum() >= 0) return true;
         }

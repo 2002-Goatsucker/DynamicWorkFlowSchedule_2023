@@ -5,13 +5,15 @@ import java.util.LinkedList;
 import java.util.List;
 
 public class Chromosome implements Cloneable {
+
+    public int ID;
     private int[] task;
     private int[] task2ins;
     private double cost;
     private double makeSpan;
     private double crowding;
-    private double[] start;
-    private double[] end;
+    private double[] start = new double[100];
+    private double[] end = new double[100];
     public double[] launchTime=new double[ReadOnlyData.insNum];
     public double[] shutdownTime=new double[ReadOnlyData.insNum];
 

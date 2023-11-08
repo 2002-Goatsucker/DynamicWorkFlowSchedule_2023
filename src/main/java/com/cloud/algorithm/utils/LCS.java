@@ -1,4 +1,4 @@
-package com.cloud.algorithm.utils.dmga;
+package com.cloud.algorithm.utils;
 
 import java.util.ArrayList;
 import java.util.Collections;
@@ -8,8 +8,8 @@ import java.util.Random;
 public class LCS {
     public static void main(String[] args) {
         //随机生成指定长度的字符串
-        int[] a= {1,2,3,4,5,6,7};
-        int[] b= {2,4,6,8,10};
+        int[] a= {1,2,4,5,6,7};
+        int[] b= {1,2,4,6,8,10};
         ArrayList<Integer> same=getLCS(a, b);
         for (Integer s:same)
         	System.out.println(s);
