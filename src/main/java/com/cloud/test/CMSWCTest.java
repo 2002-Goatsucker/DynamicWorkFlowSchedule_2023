@@ -1,10 +1,20 @@
 package com.cloud.test;
 
 import com.cloud.algorithm.CMSWC;
+import com.cloud.entity.CMSWCSolution;
 import com.cloud.entity.ReadOnlyData;
+import com.cloud.entity.Result;
 import com.cloud.entity.Type;
 import com.cloud.utils.PythonUtils;
 
+import java.io.BufferedWriter;
+import java.io.FileWriter;
+import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+@SuppressWarnings("unchecked")
 public class CMSWCTest {
     public static void main(String[] args) {
         //初始化Type
@@ -19,9 +29,22 @@ public class CMSWCTest {
         types[7] = new Type(7, 30/8.0, 85196800, 0.9);
         ReadOnlyData.types = types;
 
-        //创建算法步骤
-        CMSWC cmswc = new CMSWC("2");
-        cmswc.execute();
+        List<List<CMSWCSolution>> duplicatedSolution = new ArrayList<>();
+        for (int i = 0; i < 1; i++) {
+            ReadOnlyData.random = new Random(i);
+            CMSWC cmswc = new CMSWC(i+"");
+            Result result = cmswc.execute();
+            duplicatedSolution.add((List<CMSWCSolution>)result.map.get("solutions"));
+            try(BufferedWriter out = new BufferedWriter(new FileWriter("src/main/resources/result/result_cmswc.txt")))
+            {
+                for(CMSWCSolution s: (List<CMSWCSolution>)result.map.get("solutions")){
+                    out.write(s.getMakeSpan() + " " + s.getCost()+"\n");
+
+                }
+            } catch (IOException e) {
+                throw new RuntimeException(e);
+            }
+        }
 
 
     }

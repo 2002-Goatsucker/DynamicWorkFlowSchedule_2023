@@ -1,8 +1,9 @@
 package com.cloud.entity;
 
+import com.cloud.algorithm.CMSWC;
+
 import java.util.*;
 
-import static com.cloud.entity.ReadOnlyData.insToType;
 import static com.cloud.entity.ReadOnlyData.types;
 
 public class CMSWCSolution implements Cloneable{
@@ -13,13 +14,14 @@ public class CMSWCSolution implements Cloneable{
     private double crowdingDist;
     private List<Integer> assignedTask;
     private Set<Integer> assignedType;
-
+    private int[] assignedQuantity;
     public CMSWCSolution(){}
 
     public CMSWCSolution(Task[] tasks) {
         unsortedTasks = new Task[tasks.length];
         assignedTask = new ArrayList<>();
         assignedType = new HashSet<>();
+        assignedQuantity = new int[types.length];
         for (int i = 0; i < tasks.length; i++) {
             unsortedTasks[i] = tasks[i].clone();
         }
@@ -27,6 +29,7 @@ public class CMSWCSolution implements Cloneable{
         for (int i = 0; i < types.length; i++) {
             insPool.add(new ArrayList<>());
         }
+
         cost = 0;
         makeSpan = 0;
     }
@@ -85,6 +88,14 @@ public class CMSWCSolution implements Cloneable{
 
     public void setAssignedType(Set<Integer> assignedType) {
         this.assignedType = assignedType;
+    }
+
+    public int[] getAssignedQuantity() {
+        return assignedQuantity;
+    }
+
+    public void setAssignedQuantity(int[] assignedQuantity) {
+        this.assignedQuantity = assignedQuantity;
     }
 
     public void update() {
@@ -176,6 +187,7 @@ public class CMSWCSolution implements Cloneable{
         solution.setMakeSpan(this.makeSpan);
         solution.assignedTask.addAll(this.assignedTask);
         solution.assignedType.addAll(this.assignedType);
+        solution.assignedQuantity = Arrays.copyOf(this.assignedQuantity,this.assignedQuantity.length);
         for (int i = 0; i < insPool.size(); i++) {
             for (CMSWCVM vm: insPool.get(i)){
                 solution.getInsPool().get(i).add(vm.clone());
@@ -199,6 +211,41 @@ public class CMSWCSolution implements Cloneable{
             }
         }
         return shiftedValue;
+    }
+
+    public void repair(CMSWC cmswc) {
+        List<CMSWCVM> crashedVM = new ArrayList<>();
+        List<CMSWCVM> newVMs = new ArrayList<>();
+        for (List<CMSWCVM> vms: insPool){
+            for (CMSWCVM vm : vms) {
+                if (cmswc.disabledIns.contains(vm.getIndex())) {
+                    crashedVM.add(vm);
+                    int type = cmswc.accessibleIns.get(ReadOnlyData.random.nextInt(cmswc.accessibleIns.size())) / 10;
+                    int insIndex = type * 10 + assignedQuantity[type];
+                    while(cmswc.disabledIns.contains(insIndex)){
+                        insIndex++;
+                    }
+                    assignedQuantity[type] += 1;
+                    CMSWCVM newIns = new CMSWCVM(type,insIndex);
+                    newVMs.add(newIns);
+                    assignedType.add(type);
+                    for (int t : vm.getTaskList()) {
+                        newIns.getTaskList().add(t);
+                        unsortedTasks[t].setInsType(type);
+                    }
+                }
+            }
+        }
+        for (CMSWCVM newVM : newVMs) {
+            insPool.get(newVM.getType()).add(newVM);
+        }
+        for (CMSWCVM vm : crashedVM) {
+            insPool.get(vm.getType()).remove(vm);
+            if (insPool.get(vm.getType()).size() == 0){
+                assignedType.remove(vm.getType());
+            }
+        }
+        update();
     }
 
     static class MachineAndTaskIndex{

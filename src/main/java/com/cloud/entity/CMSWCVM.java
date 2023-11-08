@@ -4,17 +4,19 @@ import java.util.ArrayList;
 import java.util.List;
 
 public class CMSWCVM implements Cloneable{
+    private int index;
     private int type;
     private double launchTime;
     private double shutdownTime;
     private List<Integer> taskList;    //储存task的index就可以了
 
     public CMSWCVM() {
-        taskList = new ArrayList<>();
+        this.taskList = new ArrayList<>();
     }
-    public CMSWCVM(int type) {
+    public CMSWCVM(int type, int index) {
         this.type = type;
-        taskList = new ArrayList<>();
+        this.taskList = new ArrayList<>();
+        this.index = index;
     }
 
     public int getType() {
@@ -49,15 +51,24 @@ public class CMSWCVM implements Cloneable{
         this.shutdownTime = shutdownTime;
     }
 
+    public int getIndex() {
+        return index;
+    }
+
+    public void setIndex(int index) {
+        this.index = index;
+    }
+
     @Override
     public CMSWCVM clone() {
-        CMSWCVM vm = new CMSWCVM(this.type);
-        for(int t:taskList){
+        CMSWCVM vm = new CMSWCVM();
+        for(int t:this.taskList){
             vm.getTaskList().add(t);
         }
         vm.setType(type);
         vm.setShutdownTime(shutdownTime);
         vm.setLaunchTime(launchTime);
+        vm.setIndex(index);
         return vm;
     }
 }

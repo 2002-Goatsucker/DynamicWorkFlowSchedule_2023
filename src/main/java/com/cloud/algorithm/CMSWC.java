@@ -1,5 +1,6 @@
 package com.cloud.algorithm;
 
+import com.cloud.algorithm.change.CMSWCInsAvailChange;
 import com.cloud.algorithm.standard.Algorithm;
 import com.cloud.entity.*;
 import com.cloud.utils.CMSWCUtils;
@@ -15,6 +16,8 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.util.*;
 
+import static com.cloud.entity.ReadOnlyData.types;
+
 public class CMSWC extends Algorithm {
     public Task[] tasks;    //维护排好序的tasks
     public TaskGraph graph;
@@ -23,13 +26,17 @@ public class CMSWC extends Algorithm {
     public int insType;
     public double exploitRate;
     public List<EliteStrategy> strategies;
+    public int [] insQuantity;
+    public CMSWCInsAvailChange crash;
+    public List<Integer> accessibleIns = new LinkedList<>();
+    public Set<Integer> disabledIns = new HashSet<>();
     public CMSWC(String name) {
         super(name);
+        init();
     }
 
     @Override
     public Result execute() {
-        init();
         upwardRank(tasks);
         Task [] unsortedTasks = new Task[tasks.length]; //unsortedTasks保留原task的index
         for (int i = 0; i < tasks.length; i++) {
@@ -43,28 +50,34 @@ public class CMSWC extends Algorithm {
         List<CMSWCSolution> solutions = null;
         if (CMSWCUtils.checkTopology(tasks)){
             solutions = TaskMapping(tasks,unsortedTasks);
-            try(BufferedWriter out = new BufferedWriter(new FileWriter("src/main/resources/result/result_cmswc.txt")))
-            {
-                for(CMSWCSolution s: solutions){
-                    out.write(s.getMakeSpan() + " " + s.getCost()+"\n");
-
-                }
-            } catch (IOException e) {
-                throw new RuntimeException(e);
-            }
         }
         Result result = new Result();
-        result.map.put("CMSWC", solutions);
+        result.map.put("solutions", solutions);
         return result;
     }
 
 
 
     public void init() {
+        input();
         bw = IOUtils.readIntProperties("cmswc", "ins.bandwidth");
         K = IOUtils.readIntProperties("cmswc", "solution.number");
         insType = IOUtils.readIntProperties("cmswc", "ins.type");
         exploitRate = IOUtils.readDoubleProperties("cmswc", "exploitRate");
+        insQuantity = new int[types.length];
+        for(int i=0;i<8;++i){
+            String conf = "ins.quantity.type"+i;
+            int quantity = IOUtils.readIntProperties("dnsgaii-random",conf);
+            for(int j=0;j<quantity;++j){
+                ReadOnlyData.insToType.add(i);
+            }
+            insQuantity[i] = quantity;
+        }
+        for(int ins=0;ins<ReadOnlyData.insToType.size();++ins){
+            accessibleIns.add(ins);
+        }
+        ReadOnlyData.insNum = accessibleIns.size();
+        crash = new CMSWCInsAvailChange();
         strategies = new ArrayList<>();
         strategies.add(new ESS1());
         strategies.add(new ESS2());
@@ -73,7 +86,7 @@ public class CMSWC extends Algorithm {
         strategies.add(new ESS5());
         strategies.add(new ESS6());
         strategies.add(new ESS7());
-        input();
+
     }
 
     public void input(){
@@ -162,8 +175,13 @@ public class CMSWC extends Algorithm {
         }
         try {
             for (int i = 0; i < tasks.length; i++) {  // each task
-                if (i % 100 == 0)
-                    System.out.println("分配第"+i+"个任务...");
+                System.out.println("分配第"+i+"个任务...");
+                if (CMSWCInsAvailChange.crashTask.contains(i)){
+                    crash.change(this);
+                    for (CMSWCSolution solution : S) {
+                        solution.repair(this);
+                    }
+                }
                 ArrayList<CMSWCSolution> intermediateSolution = new ArrayList<>();  //S'← ∅
                 for (CMSWCSolution s: S) {   //each solution
                     for (int j = 0; j < s.getInsPool().size(); j++) {
@@ -179,21 +197,39 @@ public class CMSWC extends Algorithm {
                         }
                     }
 
-                    for (int j = 0; j < insType; j++) {
-                        CMSWCSolution interSol = s.clone();
-                        interSol.getAssignedTask().add(tasks[i].getIndex());
-                        CMSWCVM newIns = new CMSWCVM(j);
-                        int indexOfTask = tasks[i].getIndex();
-                        newIns.getTaskList().add(indexOfTask);
-                        interSol.getTasks()[indexOfTask].setInsType(j);
-                        interSol.getInsPool().get(j).add(newIns);
-                        interSol.getAssignedType().add(j);
+                    loop:for (int j = 0; j < ReadOnlyData.types.length; j++) {
+                        if (s.getAssignedQuantity()[j] < insQuantity[j]){
+                            CMSWCSolution interSol = s.clone();
+                            interSol.getAssignedTask().add(tasks[i].getIndex());
+                            int insIndex = j * 10 + interSol.getAssignedQuantity()[j];
+                            while(disabledIns.contains(insIndex)){
+                                insIndex++;
+                                if (insIndex >= insQuantity[j])
+                                    continue loop;
+                            }
+                            CMSWCVM newIns = new CMSWCVM(j,insIndex);
+                            interSol.getAssignedQuantity()[j] += 1;
+                            int indexOfTask = tasks[i].getIndex();
+                            newIns.getTaskList().add(indexOfTask);
+                            interSol.getTasks()[indexOfTask].setInsType(j);
+                            interSol.getInsPool().get(j).add(newIns);
+                            interSol.getAssignedType().add(j);
 
-                        interSol.update();
-                        intermediateSolution.add(interSol);
+                            interSol.update();
+                            intermediateSolution.add(interSol);
+                        }
                     }
                 }
                 List<List<CMSWCSolution>> rank = quickNondominatedSort(intermediateSolution); //选择前K个Pareto最优解
+                try(BufferedWriter out = new BufferedWriter(new FileWriter("src/main/resources/result/result_cmswc_"+i+".txt")))
+                {
+                    for(CMSWCSolution s: rank.get(0)){
+                        out.write(s.getMakeSpan() + " " + s.getCost()+"\n");
+
+                    }
+                } catch (IOException e) {
+                    throw new RuntimeException(e);
+                }
                 S.clear();
                 int front = 0;
                 while (S.size() < K && front < rank.size()){
@@ -274,14 +310,13 @@ public class CMSWC extends Algorithm {
 
     private List<CMSWCSolution> EliteStudyStrategy(List<CMSWCSolution> S) {
         EliteStrategy strategy;
-        Random random = new Random(0);
         List<CMSWCSolution> S_ = new ArrayList<>();
         for (CMSWCSolution solution : S) {
-            double t = random.nextDouble();
+            double t = ReadOnlyData.random.nextDouble();
             if (t < exploitRate) { //choose from {ESS1,2,3,4}
-                strategy = strategies.get(random.nextInt(4));
+                strategy = strategies.get(ReadOnlyData.random.nextInt(4));
             } else {            //choose from {ESS5,6,7}
-                strategy = strategies.get(4 + random.nextInt(3));
+                strategy = strategies.get(4 + ReadOnlyData.random.nextInt(3));
             }
             S_.add(strategy.applyStrategy(solution));
         }
