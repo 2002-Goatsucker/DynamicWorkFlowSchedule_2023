@@ -1,18 +1,12 @@
-from matplotlib import pyplot as plt
-import sys
 import numpy as np
-from scipy.ndimage import gaussian_filter1d
+import matplotlib.pyplot as plt
 
-len = len(sys.argv)
-y = np.empty(len-1, dtype=float)
-for i in range(1, len):
-    y[i-1] = sys.argv[i];
-
-
-x=np.arange(y.size)
-
-plt.plot(x, y)
-plt.title("Spline Curve Using the Gaussian Smoothing")
-plt.xlabel("X")
-plt.ylabel("Y")
-plt.show()
+if __name__ == "__main__":
+    plt.figure(0);
+    x = [i + 1 for i in range(500)]
+    data1 = np.loadtxt("C:/Users/徐璟源/Desktop/git repository/DynamicScheduling_2023/src/main/resources/result/result_nsgaiib.txt")
+    data2 = np.loadtxt("C:/Users/徐璟源/Desktop/git repository/DynamicScheduling_2023/src/main/resources/result/result_fogmp.txt")
+    plt.plot(x, data1)
+    plt.plot(x, data2)
+    plt.legend(['DNSGAII-B', 'FOGMP'])
+    plt.show()

@@ -100,7 +100,7 @@ public class ChromosomeUtils {
         }
     }
 
-    public static Chromosome mutate(Chromosome c, double mutateRate, Task[] tasks, Random random) {
+    public static Chromosome mutate(Chromosome c, double mutateRate, Task[] tasks, Random random, List<Integer> accessibleIns) {
         Chromosome chromosome = null;
         try {
             chromosome = (Chromosome) c.clone();
@@ -111,17 +111,16 @@ public class ChromosomeUtils {
                 mutateOrder(chromosome, tasks, random);
             }
             if (r2 < mutateRate){
-                mutateIns(chromosome, random);
+                mutateIns(chromosome, random, accessibleIns);
             }
 //            if (r3 < rate){
 //                mutateType(chromosome);
 //            }
 
-
-
         } catch (CloneNotSupportedException e) {
             e.printStackTrace();
         }
+        assert chromosome != null;
         return chromosome;
     }
     public static void mutateOrder(Chromosome X,Task[] tasks, Random random) {
@@ -156,10 +155,10 @@ public class ChromosomeUtils {
         nc.getTask()[posN] = temp;
     }
 
-    public static void mutateIns(Chromosome X, Random random) {
+    public static void mutateIns(Chromosome X, Random random, List<Integer> accessibleIns) {
         int number = X.getTask2ins().length;
         int p = random.nextInt(number);//generate the position where mutate occurs
-        int instance = random.nextInt(insNum);//m is the number of instances available
+        int instance = accessibleIns.get(random.nextInt(accessibleIns.size()));//m is the number of instances available
         X.getTask2ins()[p] = instance;
     }
 
@@ -232,6 +231,28 @@ public class ChromosomeUtils {
             }
         }
         return max_after_communication_time;
+    }
+
+    public static List<Double> getHV(List<List<double[]>> list, double maxMakeSpan, double minMakeSpan, double maxCost, double minCost){
+        List<Double> ans = new LinkedList<>();
+        for(List<double[]> chromosomes:list){
+            chromosomes.sort(Comparator.comparingDouble(x -> x[0]));
+            double makespan[]=new double[chromosomes.size()];
+            double cost[] = new double[chromosomes.size()];
+            //按照makespan的顺序计算HV
+            for(int i=0;i<chromosomes.size();++i){
+                double makespan_i = chromosomes.get(i)[0];
+                double cost_i = chromosomes.get(i)[1];
+                makespan[i] = (makespan_i-minMakeSpan)/(maxMakeSpan-minMakeSpan);
+                cost[i] = (cost_i-minCost)/(maxCost-minCost);
+            }
+            double HV = (1.1-makespan[0])*(1.1-cost[0]);
+            for(int i=1;i<makespan.length;++i){
+                HV+=(1.1-makespan[i])*(cost[i-1]-cost[i]);
+            }
+            ans.add(HV);
+        }
+        return ans;
     }
 
     public static List<Double> getHV(List<List<Chromosome>> list){

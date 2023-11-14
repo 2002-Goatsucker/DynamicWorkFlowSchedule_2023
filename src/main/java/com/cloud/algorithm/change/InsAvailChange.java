@@ -1,6 +1,7 @@
 package com.cloud.algorithm.change;
 
 import com.cloud.algorithm.DNSGAII;
+import com.cloud.algorithm.FOGMP;
 import com.cloud.algorithm.standard.Algorithm;
 import com.cloud.algorithm.standard.Change;
 import com.cloud.utils.IOUtils;
@@ -24,10 +25,19 @@ public class InsAvailChange implements Change {
 
     @Override
     public void change(Algorithm algorithm) {
-        DNSGAII dnsgaii = (DNSGAII) algorithm;
-        List<Integer> accessibleIns = dnsgaii.accessibleIns;
-        List<Integer> disabledIns = dnsgaii.disabledIns;
-        Random random = dnsgaii.random;
+        List<Integer> accessibleIns = null;
+        List<Integer> disabledIns = null;
+        Random random = null;
+        if(algorithm instanceof DNSGAII dnsgaii) {
+            accessibleIns = dnsgaii.accessibleIns;
+            disabledIns = dnsgaii.disabledIns;
+            random = dnsgaii.random;
+        }else if(algorithm instanceof FOGMP fogmp){
+            accessibleIns = fogmp.accessibleIns;
+            disabledIns = fogmp.disabledIns;
+            random = fogmp.random;
+        }
+        assert accessibleIns != null;
         int num  = (int) (accessibleIns.size() *severity);
         for(int i=0;i<num;++i){
             int index = random.nextInt(accessibleIns.size());

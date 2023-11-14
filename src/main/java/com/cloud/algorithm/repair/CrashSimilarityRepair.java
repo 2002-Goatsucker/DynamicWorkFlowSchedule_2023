@@ -5,13 +5,16 @@ import com.cloud.algorithm.FOGMP;
 import com.cloud.algorithm.standard.Algorithm;
 import com.cloud.algorithm.standard.Repair;
 import com.cloud.entity.Chromosome;
+import com.cloud.entity.ReadOnlyData;
 import com.cloud.entity.Task;
+import com.cloud.entity.Type;
 import com.cloud.utils.ChromosomeUtils;
 
+import java.util.ArrayList;
 import java.util.List;
 import java.util.Random;
 
-public class CrashRandomRepair implements Repair {
+public class CrashSimilarityRepair implements Repair {
 
     @Override
     public void repair(Algorithm algorithm) {
@@ -36,10 +39,29 @@ public class CrashRandomRepair implements Repair {
         for (Chromosome chromosome : chromosomes) {
             for (int i = 0; i < chromosome.getTask2ins().length; ++i) {
                 if (disabledIns.contains(chromosome.getTask2ins()[i])) {
-                    chromosome.getTask2ins()[i] = accessibleIns.get(random.nextInt(accessibleIns.size()));
+                    chromosome.getTask2ins()[i] = getSimilarityIns(accessibleIns, chromosome.getTask2ins()[i], random);
                 }
             }
             ChromosomeUtils.refresh(chromosome, tasks);
         }
+    }
+
+    public int getSimilarityIns(List<Integer> accessibleIns, int ins, Random random){
+        Type type = ReadOnlyData.types[ReadOnlyData.insToType.get(ins)];
+        double min = Double.MAX_VALUE;
+        List<Integer> repairIns = new ArrayList<>();
+        for(int i:accessibleIns){
+            Type t = ReadOnlyData.types[ReadOnlyData.insToType.get(i)];
+            double dis = Math.abs((t.bw-type.bw)/(131072000 - 39321600)) + Math.abs((t.cu-type.cu)/(30/8.0-1.7/8)) + Math.abs((t.p-type.p)/(0.9-0.06));
+            min = Math.min(min, dis);
+        }
+        for(int i: accessibleIns){
+            Type t = ReadOnlyData.types[ReadOnlyData.insToType.get(i)];
+            double dis = Math.abs((t.bw-type.bw)/(131072000 - 39321600)) + Math.abs((t.cu-type.cu)/(30/8.0-1.7/8)) + Math.abs((t.p-type.p)/(0.9-0.06));
+            if(dis==min||Math.abs(dis-min)<0.000000001){
+                repairIns.add(i);
+            }
+        }
+        return repairIns.get(random.nextInt(repairIns.size()));
     }
 }

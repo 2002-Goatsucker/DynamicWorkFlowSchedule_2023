@@ -2,6 +2,7 @@ package com.cloud.algorithm;
 
 import com.cloud.algorithm.change.InsAvailChange;
 import com.cloud.algorithm.repair.CrashRandomRepair;
+import com.cloud.algorithm.repair.CrashSimilarityRepair;
 import com.cloud.algorithm.standard.Algorithm;
 import com.cloud.algorithm.standard.Change;
 import com.cloud.algorithm.standard.Repair;
@@ -41,7 +42,7 @@ public class DNSGAII extends Algorithm {
     public Result execute() {
         init();
         if(change==null) change = new InsAvailChange();
-        if(repair==null) repair = new CrashRandomRepair();
+        if(repair==null) repair = new CrashSimilarityRepair();
         initPopulation();
         for(int i=0;i<generation;++i){
             if(change instanceof InsAvailChange){
@@ -53,9 +54,9 @@ public class DNSGAII extends Algorithm {
             iterate();
         }
 
-        List<Double> hv = ChromosomeUtils.getHV(all);
+//        List<Double> hv = ChromosomeUtils.getHV(all);
         Result result = new Result();
-        result.map.put("hv", hv);
+        result.map.put("front", all.get(all.size()-1));
         return result;
     }
 
@@ -187,8 +188,8 @@ public class DNSGAII extends Algorithm {
                 child1 = childList.get(0);
                 child2 = childList.get(1);
                 if (random.nextInt(10000) < mutationRate * 10000) {
-                    child1 = ChromosomeUtils.mutate(child1, mutationRate, tasks, random);
-                    child2 = ChromosomeUtils.mutate(child2, mutationRate, tasks, random);
+                    child1 = ChromosomeUtils.mutate(child1, mutationRate, tasks, random, accessibleIns);
+                    child2 = ChromosomeUtils.mutate(child2, mutationRate, tasks, random, accessibleIns);
                 }
                 ChromosomeUtils.refresh(child1, tasks);
                 ChromosomeUtils.refresh(child2, tasks);
