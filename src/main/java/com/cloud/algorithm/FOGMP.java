@@ -1,7 +1,7 @@
 package com.cloud.algorithm;
 
+import com.cloud.Application;
 import com.cloud.algorithm.change.InsAvailChange;
-import com.cloud.algorithm.repair.CrashRandomRepair;
 import com.cloud.algorithm.repair.CrashSimilarityRepair;
 import com.cloud.algorithm.standard.Algorithm;
 import com.cloud.algorithm.standard.Change;
@@ -32,15 +32,25 @@ public class FOGMP extends Algorithm {
     public TaskGraph graph;
     public int insNum;
     public Task[] tasks;
-    public List<List<Chromosome>> rank;
+    public List<List<Chromosome>> daRank = new ArrayList<>();
+    public List<List<Chromosome>> caRank = new ArrayList<>();
+
     public List<List<Chromosome>> all = new LinkedList<>();
     public Random random;
     public Change change;
     public Repair repair;
+    public DNSGAII dnsgaii = new DNSGAII("");
 
 
-    public FOGMP(String name) {
+    public FOGMP(String name, Random random) {
         super(name);
+        Application.initIns(dnsgaii.accessibleIns);
+        this.random = random;
+        dnsgaii.random = random;
+        dnsgaii.init();
+        if(dnsgaii.change==null) dnsgaii.change = new InsAvailChange();
+        if(dnsgaii.repair==null) dnsgaii.repair = new CrashSimilarityRepair();
+        dnsgaii.initPopulation();
     }
 
     @Override
@@ -48,57 +58,105 @@ public class FOGMP extends Algorithm {
         init();
         if (change == null) change = new InsAvailChange();
         if (repair == null) repair = new CrashSimilarityRepair();
-        initPopulation();
-        for (int i = 0; i < generation; ++i) {
+        boolean isChange = false;
+
+        for (int x = 0; x < generation; ++x) {
             if (change instanceof InsAvailChange) {
-                if (InsAvailChange.generations.contains(i)) {
+                if (InsAvailChange.generations.contains(x)) {
                     change.change(this);
+                    if(ca.isEmpty()) {
+                        for (List<Chromosome> list : dnsgaii.rank) {
+                            list.sort((o1, o2) -> {
+                                if (o1.getMakeSpan() - o2.getMakeSpan() > 0.000000001) return 1;
+                                else if (o1.getMakeSpan() - o2.getMakeSpan() < -0.000000001) return -1;
+                                return 0;
+                            });
+                            list.get(0).setCrowding(Double.MAX_VALUE);
+                            list.get(list.size() - 1).setCrowding(Double.MAX_VALUE);
+                            for (int i = 1; i < list.size() - 1; ++i) {
+                                list.get(i).setCrowding(Math.abs(list.get(i + 1).getMakeSpan() - list.get(i - 1).getMakeSpan()) * Math.abs(list.get(i + 1).getCost() - list.get(i - 1).getCost()));
+                            }
+                            list.sort((o1, o2) -> {
+                                double num = o1.getCrowding() - o2.getCrowding();
+                                if (num > 0) return -1;
+                                if (num < 0) return 1;
+                                return 0;
+                            });
+                        }
+                        c:
+                        for (List<Chromosome> list : dnsgaii.rank) {
+                            for (Chromosome chromosome : list) {
+                                if (!ca.contains(chromosome)) ca.add(chromosome);
+                                if (ca.size() >= size / 2) break c;
+                            }
+                        }
+                    }
+                    if(da.isEmpty()){
+                        while (da.size() < size / 2) {
+                            Chromosome chromosome = ChromosomeUtils.getInitialChromosome(graph, accessibleIns, random);
+                            if (!da.contains(chromosome)) da.add(chromosome);
+                        }
+                    }
                     repair.repair(this);
+                    isChange = true;
                 }
             }
-            caIterate();
+            if(isChange) {
+                List<Chromosome> front1 = daIterate();
+                List<Chromosome> front2 = caIterate();
+                List<Chromosome> front = new ArrayList<>(front1);
+                front.addAll(front2);
+                all.add(getParetoFront(front));
+            }else {
+                dnsgaii.iterate();
+                List<Chromosome> list = new ArrayList<>();
+                for(int k=0;k<dnsgaii.rank.get(0).size();++k){
+                    try {
+                        list.add(dnsgaii.rank.get(0).get(k).clone());
+                    } catch (CloneNotSupportedException e) {
+                        throw new RuntimeException(e);
+                    }
+                }
+                all.add(list);
+            }
         }
 
 //        List<Double> hv = ChromosomeUtils.getHV(all);
         Result result = new Result();
         List<List<double[]>> fronts = new ArrayList<>();
-        for(List<Chromosome> list:all){
+        for (List<Chromosome> list : all) {
             List<double[]> front = new ArrayList<>();
-            for(Chromosome chromosome:list){
-                front.add(new double[]{chromosome.getMakeSpan(),chromosome.getCost()});
+            for (Chromosome chromosome : list) {
+                front.add(new double[]{chromosome.getMakeSpan(), chromosome.getCost()});
             }
             fronts.add(front);
         }
         result.map.put("fronts", fronts);
+        System.out.println("------FOGMP FINISH------");
         return result;
     }
 
 
     public void initPopulation() {
-        while (ca.size() < size) {
+        while (da.size() < size / 2) {
+            int[] order = graph.TopologicalSorting(random);
+            int[] ins = new int[order.length];
+            for (int i = 0; i < ins.length; ++i) {
+                ins[i] = accessibleIns.get(random.nextInt(accessibleIns.size()));
+            }
+            Chromosome chromosome = new Chromosome(order, ins);
+            if (!da.contains(chromosome)) da.add(chromosome);
+        }
+        while (ca.size() < size / 2) {
             Chromosome chromosome = ChromosomeUtils.getInitialChromosome(graph, accessibleIns, random);
             if (!ca.contains(chromosome)) ca.add(chromosome);
         }
-//        while (da.size() < size / 2) {
-//            Chromosome chromosome = ChromosomeUtils.getInitialChromosome(graph, accessibleIns, random);
-//            if (!da.contains(chromosome)) da.add(chromosome);
-//        }
     }
 
-    public void caIterate() {
-        List<List<Chromosome>> region = divideRegion();
-
-//        for(List<Chromosome> r: region){
-//            if(r.size()>ca.size()/3){
-//                while (r.size()>ca.size()/3){
-//
-//                }
-//            }
-//        }
-
-        List<Chromosome> son = caReproduce(region);
-        caSorted(ca, son);
-        caEliminate();
+    public List<Chromosome> caIterate() {
+        List<Chromosome> son = caReproduce();
+        sorted(ca, son, caRank);
+        eliminate(ca, caRank);
         for (Chromosome chromosome : ca) {
             ChromosomeUtils.refresh(chromosome, tasks);
             chromosome.setBetterNum(0);
@@ -107,14 +165,78 @@ public class FOGMP extends Algorithm {
             chromosome.getPoor().clear();
         }
         List<Chromosome> list = new ArrayList<>();
-        for (int k = 0; k < rank.get(0).size(); ++k) {
+        for (int k = 0; k < caRank.get(0).size(); ++k) {
             try {
-                list.add(rank.get(0).get(k).clone());
+                list.add(caRank.get(0).get(k).clone());
             } catch (CloneNotSupportedException e) {
                 throw new RuntimeException(e);
             }
         }
-        all.add(list);
+        return list;
+    }
+
+    public List<Chromosome> caReproduce() {
+        List<Chromosome> son = new ArrayList<>();
+        try {
+
+            while (son.size() < size / 2) {
+                int num1 = random.nextInt(ca.size());
+                int num2 = random.nextInt(ca.size());
+                while (num1 == num2) {
+                    num2 = random.nextInt(ca.size());
+                }
+
+                Chromosome parent1 = ca.get(num1).clone();
+                Chromosome parent2 = ca.get(num2).clone();
+                if (random.nextInt(10000) < 0.5 * 10000) {
+                    parent1 = da.get(random.nextInt(da.size())).clone();
+                }
+                Chromosome child1;
+                Chromosome child2;
+
+                List<Chromosome> childList = ChromosomeUtils.crossover(parent1, parent2, random);
+                child1 = childList.get(0);
+                child2 = childList.get(1);
+                if (random.nextInt(10000) < mutationRate * 10000) {
+                    child1 = ChromosomeUtils.mutate(child1, mutationRate, tasks, random, accessibleIns);
+                    child2 = ChromosomeUtils.mutate(child2, mutationRate, tasks, random, accessibleIns);
+                }
+                ChromosomeUtils.refresh(child1, tasks);
+                ChromosomeUtils.refresh(child2, tasks);
+
+                son.add(child1);
+                son.add(child2);
+            }
+
+        } catch (CloneNotSupportedException e) {
+            throw new RuntimeException(e);
+        }
+        return son;
+    }
+
+
+    public List<Chromosome> daIterate() {
+        List<List<Chromosome>> region = divideRegion();
+
+        List<Chromosome> son = daReproduce(region);
+        sorted(da, son, daRank);
+        eliminate(da, daRank);
+        for (Chromosome chromosome : da) {
+            ChromosomeUtils.refresh(chromosome, tasks);
+            chromosome.setBetterNum(0);
+            chromosome.setPoorNum(0);
+            chromosome.getBetter().clear();
+            chromosome.getPoor().clear();
+        }
+        List<Chromosome> list = new ArrayList<>();
+        for (int k = 0; k < daRank.get(0).size(); ++k) {
+            try {
+                list.add(daRank.get(0).get(k).clone());
+            } catch (CloneNotSupportedException e) {
+                throw new RuntimeException(e);
+            }
+        }
+        return list;
     }
 
     public List<List<Chromosome>> divideRegion() {
@@ -130,7 +252,7 @@ public class FOGMP extends Algorithm {
         double maxCost = 0;
         double minCost = Double.MAX_VALUE;
 
-        for (Chromosome chromosome : ca) {
+        for (Chromosome chromosome : da) {
             ChromosomeUtils.refresh(chromosome, tasks);
             maxMakeSpan = Math.max(chromosome.getMakeSpan(), maxMakeSpan);
             maxCost = Math.max(chromosome.getCost(), maxCost);
@@ -138,7 +260,7 @@ public class FOGMP extends Algorithm {
             minCost = Math.min(chromosome.getCost(), minCost);
         }
 
-        for (Chromosome chromosome : ca) {
+        for (Chromosome chromosome : da) {
             //计算点到五个分区向量的距离，就近原则划分分区
             double makespan = (chromosome.getMakeSpan() - minMakeSpan) / (maxMakeSpan - minMakeSpan);
             double cost = (chromosome.getCost() - minCost) / (maxCost - minCost);
@@ -148,14 +270,19 @@ public class FOGMP extends Algorithm {
             double d3 = Math.abs(makespan - (Math.sqrt(2) + 1) * cost) / Math.sqrt(4 + 2 * Math.sqrt(2));
             double d4 = cost;
             if (d0 <= d1 && d0 <= d2 && d0 <= d3 && d0 <= d4) {
+                chromosome.setRegion(0);
                 region0.add(chromosome);
             } else if (d1 <= d0 && d1 <= d2 && d1 <= d3 && d1 <= d4) {
+                chromosome.setRegion(1);
                 region1.add(chromosome);
             } else if (d2 <= d1 && d2 <= d0 && d2 <= d3 && d2 <= d4) {
+                chromosome.setRegion(2);
                 region2.add(chromosome);
             } else if (d3 <= d1 && d3 <= d2 && d3 <= d0 && d3 <= d4) {
+                chromosome.setRegion(3);
                 region3.add(chromosome);
             } else if (d4 <= d1 && d4 <= d2 && d4 <= d3 && d4 <= d0) {
+                chromosome.setRegion(4);
                 region4.add(chromosome);
             }
         }
@@ -167,7 +294,7 @@ public class FOGMP extends Algorithm {
         return region;
     }
 
-    public List<Chromosome> caReproduce(List<List<Chromosome>> region) {
+    public List<Chromosome> daReproduce(List<List<Chromosome>> region) {
         List<Chromosome> son = new ArrayList<>();
         List<List<Chromosome>> regionFront = new ArrayList<>();
         regionFront.add(getParetoFront(region.get(0)));
@@ -181,72 +308,127 @@ public class FOGMP extends Algorithm {
         List<List<Integer>> fo3 = getFeatureOrder(regionFront.get(3));
         List<List<Integer>> fo4 = getFeatureOrder(regionFront.get(4));
 
-        while (son.size() < size) {
-            if(son.size()<size) {
-                List<Integer> fo = new ArrayList<>();
-                if (fo0.size() > 0) fo = fo0.get(random.nextInt(fo0.size()));
-                innerReproduce(region.get(0), son, fo);
-            }
-            if (son.size() < size) {
-                List<Integer> fo = new ArrayList<>();
-                if (fo1.size() > 0) fo = fo1.get(random.nextInt(fo1.size()));
-                innerReproduce(region.get(1), son, fo);
-            }
-            if (son.size() < size) {
-                List<Integer> fo = new ArrayList<>();
-                if (fo2.size() > 0) fo = fo2.get(random.nextInt(fo2.size()));
-                innerReproduce(region.get(2), son, fo);
-            }
-            if (son.size() < size) {
-                List<Integer> fo = new ArrayList<>();
-                if(fo3.size()>0) fo = fo3.get(random.nextInt(fo3.size()));
-                innerReproduce(region.get(3), son, fo);
-            }
-            if (son.size() < size) {
-                List<Integer> fo = new ArrayList<>();
-                if(fo4.size()>0) fo = fo4.get(random.nextInt(fo4.size()));
-                innerReproduce(region.get(4), son, fo);
-            }
-            if (son.size() < size) {
-                int r = random.nextInt(region.size());
-                while (r==0){
-                    r = random.nextInt(region.size());
+        while (son.size() < size / 2) {
+//            outerReproduce(ca,ca,son);
+            if (random.nextInt(100) < 100 * 0.5) {
+//                Chromosome chromosome1 = da.get(random.nextInt(da.size()));
+//                Chromosome chromosome2 = da.get(random.nextInt(da.size()));
+//                if(chromosome1.getRegion()==chromosome2.getRegion()){
+//                    List<List<Integer>> fo;
+//                    switch (chromosome1.getRegion()){
+//                        case 0:
+//                            fo = fo0;
+//                            break;
+//                        case 1:
+//                            fo = fo1;
+//                            break;
+//                        case 2:
+//                            fo = fo2;
+//                            break;
+//                        case 3:
+//                            fo = fo3;
+//                            break;
+//                        case 4:
+//                            fo = fo4;
+//                            break;
+//                        default:
+//                            throw new RuntimeException("region 数值异常");
+//                    }
+//                    List<Integer> f = new ArrayList<>();
+//                    if (fo.size() > 0) f = fo.get(random.nextInt(fo.size()));
+//                    innerReproduce(chromosome1,chromosome2,son,f);
+//                }else {
+//                    outerReproduce(chromosome1,chromosome2,son);
+//                }
+                if (son.size() < size / 2) {
+                    List<Integer> fo = new ArrayList<>();
+                    if (fo0.size() > 0) fo = fo0.get(random.nextInt(fo0.size()));
+                    innerReproduce(region.get(0), son, fo);
                 }
-                outerReproduce(region.get(0), region.get(r), son);
-            }
-            if (son.size() < size) {
-                int r = random.nextInt(region.size());
-                while (r==1){
-                    r = random.nextInt(region.size());
+                if (son.size() < size / 2) {
+                    List<Integer> fo = new ArrayList<>();
+                    if (fo1.size() > 0) fo = fo1.get(random.nextInt(fo1.size()));
+                    innerReproduce(region.get(1), son, fo);
                 }
-                outerReproduce(region.get(1), region.get(r), son);
-            }
-            if (son.size() < size) {
-                int r = random.nextInt(region.size());
-                while (r==2){
-                    r = random.nextInt(region.size());
+                if (son.size() < size / 2) {
+                    List<Integer> fo = new ArrayList<>();
+                    if (fo2.size() > 0) fo = fo2.get(random.nextInt(fo2.size()));
+                    innerReproduce(region.get(2), son, fo);
                 }
-                outerReproduce(region.get(2), region.get(r), son);
-            }
-            if (son.size() < size) {
-                int r = random.nextInt(region.size());
-                while (r==3){
-                    r = random.nextInt(region.size());
+                if (son.size() < size / 2) {
+                    List<Integer> fo = new ArrayList<>();
+                    if (fo3.size() > 0) fo = fo3.get(random.nextInt(fo3.size()));
+                    innerReproduce(region.get(3), son, fo);
                 }
-                outerReproduce(region.get(3), region.get(r), son);
-            }
-            if (son.size() < size) {
-                int r = random.nextInt(region.size());
-                while (r==4){
-                    r = random.nextInt(region.size());
+                if (son.size() < size / 2) {
+                    List<Integer> fo = new ArrayList<>();
+                    if (fo4.size() > 0) fo = fo4.get(random.nextInt(fo4.size()));
+                    innerReproduce(region.get(4), son, fo);
                 }
-                outerReproduce(region.get(4), region.get(4), son);
+                if (son.size() < size / 2) {
+                    int r = random.nextInt(region.size());
+                    while (r == 0) {
+                        r = random.nextInt(region.size());
+                    }
+                    outerReproduce(region.get(0), region.get(r), son);
+                }
+                if (son.size() < size / 2) {
+                    int r = random.nextInt(region.size());
+                    while (r == 1) {
+                        r = random.nextInt(region.size());
+                    }
+                    outerReproduce(region.get(1), region.get(r), son);
+                }
+                if (son.size() < size / 2) {
+                    int r = random.nextInt(region.size());
+                    while (r == 2) {
+                        r = random.nextInt(region.size());
+                    }
+                    outerReproduce(region.get(2), region.get(r), son);
+                }
+                if (son.size() < size / 2) {
+                    int r = random.nextInt(region.size());
+                    while (r == 3) {
+                        r = random.nextInt(region.size());
+                    }
+                    outerReproduce(region.get(3), region.get(r), son);
+                }
+                if (son.size() < size / 2) {
+                    int r = random.nextInt(region.size());
+                    while (r == 4) {
+                        r = random.nextInt(region.size());
+                    }
+                    outerReproduce(region.get(4), region.get(4), son);
+                }
+            } else {
+                try {
+                    Chromosome chromosome1 = ca.get(random.nextInt(ca.size())).clone();
+                    Chromosome chromosome2 = da.get(random.nextInt(da.size())).clone();
+                    Chromosome child1;
+                    Chromosome child2;
+                    List<Chromosome> childList = ChromosomeUtils.crossover(chromosome1, chromosome2, random);
+                    child1 = childList.get(0);
+                    child2 = childList.get(1);
+                    if (random.nextInt(10000) < mutationRate * 10000) {
+                        child1 = ChromosomeUtils.mutate(child1, mutationRate, tasks, random, accessibleIns);
+                        child2 = ChromosomeUtils.mutate(child2, mutationRate, tasks, random, accessibleIns);
+                    }
+                    ChromosomeUtils.refresh(child1, tasks);
+                    ChromosomeUtils.refresh(child2, tasks);
+
+                    son.add(child1);
+                    son.add(child2);
+                } catch (Exception e) {
+                    e.printStackTrace();
+                }
             }
+
         }
         return son;
     }
 
-    public void caSorted(List<Chromosome> fa, List<Chromosome> son) {
+
+    public void sorted(List<Chromosome> fa, List<Chromosome> son, List<List<Chromosome>> rank) {
         List<Chromosome> list = new LinkedList<>();
         list.addAll(fa);
         list.addAll(son);
@@ -256,7 +438,7 @@ public class FOGMP extends Algorithm {
             chromosome.setPoorNum(0);
             chromosome.getPoor().clear();
             chromosome.getBetter().clear();
-            ChromosomeUtils.refresh(chromosome,tasks);
+            ChromosomeUtils.refresh(chromosome, tasks);
         }
         for (int i = 0; i < list.size(); ++i) {
             Chromosome chromosome = list.get(i);
@@ -280,7 +462,7 @@ public class FOGMP extends Algorithm {
                 }
             }
         }
-        rank = new LinkedList<>();
+        rank.clear();
         while (hasBetter(list)) {
             LinkedList<Chromosome> rankList = new LinkedList<>();
             List<Chromosome> temp = new LinkedList<>();
@@ -300,8 +482,8 @@ public class FOGMP extends Algorithm {
         }
     }
 
-    public void caEliminate() {
-        ca.clear();
+    public void eliminate(List<Chromosome> fa, List<List<Chromosome>> rank) {
+        fa.clear();
         for (List<Chromosome> list : rank) {
             list.sort((o1, o2) -> {
                 if (o1.getMakeSpan() - o2.getMakeSpan() > 0.000000001) return 1;
@@ -322,8 +504,8 @@ public class FOGMP extends Algorithm {
         }
         for (List<Chromosome> list : rank) {
             for (Chromosome chromosome : list) {
-                if (!ca.contains(chromosome)) ca.add(chromosome);
-                if (ca.size() >= size) return;
+                if (!fa.contains(chromosome)) fa.add(chromosome);
+                if (fa.size() >= size) return;
             }
         }
     }
@@ -336,19 +518,15 @@ public class FOGMP extends Algorithm {
         return false;
     }
 
-    //每个区域内部进行一次reproduce
-    public void innerReproduce(List<Chromosome> fa, List<Chromosome> son, List<Integer> fo) {
-        if (fa.size() <= 1) return;
-        Chromosome chromosome1 = fa.get(random.nextInt(fa.size()));
-        Chromosome chromosome2 = fa.get(random.nextInt(fa.size()));
+    public void innerReproduce(Chromosome chromosome1, Chromosome chromosome2, List<Chromosome> son, List<Integer> fo){
         List<Chromosome> children = ChromosomeUtils.crossover(chromosome1, chromosome2, random);
         Chromosome child1 = children.get(0);
         Chromosome child2 = children.get(1);
         if (random.nextInt(10000) < mutationRate * 10000) {
-            child1 = ChromosomeUtils.mutate(child1, mutationRate, tasks, random,accessibleIns);
-            child2 = ChromosomeUtils.mutate(child2, mutationRate, tasks, random,accessibleIns);
+            child1 = ChromosomeUtils.mutate(child1, mutationRate, tasks, random, accessibleIns);
+            child2 = ChromosomeUtils.mutate(child2, mutationRate, tasks, random, accessibleIns);
         }
-        if(!fo.isEmpty()) {
+        if (!fo.isEmpty()) {
             TaskGraph foGraph = graph.clone();
             for (int i = 0; i < fo.size() - 1; ++i) {
                 foGraph.addEdge(fo.get(i), fo.get(i + 1));
@@ -358,9 +536,31 @@ public class FOGMP extends Algorithm {
             child1.setTask(newOrder1);
             child2.setTask(newOrder2);
         }
+
         ChromosomeUtils.refresh(child1, tasks);
         ChromosomeUtils.refresh(child2, tasks);
         //TODO: 测试一下需不需要将FO对应的机器也更改为同一个机器
+        son.add(child1);
+        son.add(child2);
+    }
+
+
+    //每个区域内部进行一次reproduce
+    public void innerReproduce(List<Chromosome> fa, List<Chromosome> son, List<Integer> fo) {
+        if (fa.size() <= 1) return;
+        Chromosome chromosome1 = fa.get(random.nextInt(fa.size()));
+        Chromosome chromosome2 = fa.get(random.nextInt(fa.size()));
+        innerReproduce(chromosome1, chromosome2,son,fo);
+    }
+
+    public void outerReproduce(Chromosome chromosome1, Chromosome chromosome2, List<Chromosome> son){
+        List<Chromosome> children = ChromosomeUtils.crossover(chromosome1, chromosome2, random);
+        Chromosome child1 = children.get(0);
+        Chromosome child2 = children.get(1);
+        if (random.nextInt(10000) < mutationRate * 10000) {
+            child1 = ChromosomeUtils.mutate(child1, mutationRate, tasks, random, accessibleIns);
+            child2 = ChromosomeUtils.mutate(child2, mutationRate, tasks, random, accessibleIns);
+        }
         son.add(child1);
         son.add(child2);
     }
@@ -370,15 +570,7 @@ public class FOGMP extends Algorithm {
         if (region1.size() == 0 || region2.size() == 0) return;
         Chromosome chromosome1 = region1.get(random.nextInt(region1.size()));
         Chromosome chromosome2 = region2.get(random.nextInt(region2.size()));
-        List<Chromosome> children = ChromosomeUtils.crossover(chromosome1, chromosome2, random);
-        Chromosome child1 = children.get(0);
-        Chromosome child2 = children.get(1);
-        if (random.nextInt(10000) < mutationRate * 10000) {
-            child1 = ChromosomeUtils.mutate(child1, mutationRate, tasks, random,accessibleIns);
-            child2 = ChromosomeUtils.mutate(child2, mutationRate, tasks, random,accessibleIns);
-        }
-        son.add(child1);
-        son.add(child2);
+        outerReproduce(chromosome1,chromosome2, son);
     }
 
 
@@ -398,7 +590,7 @@ public class FOGMP extends Algorithm {
                 }
             }
             for (List<Integer> fo : map.values()) {
-                if (fo.size() > 1 && fo.size() < order.length/4) {
+                if (fo.size() > 1 && fo.size() < order.length / 4) {
                     fo.sort((o1, o2) -> {
                         for (int num : order) {
                             if (num == o1) return -1;

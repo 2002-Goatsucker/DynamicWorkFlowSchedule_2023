@@ -1,8 +1,6 @@
 package com.cloud;
 
-import com.cloud.algorithm.DNSGAII;
-import com.cloud.algorithm.DNSGAIIB;
-import com.cloud.algorithm.FOGMP;
+import com.cloud.algorithm.*;
 import com.cloud.algorithm.standard.Algorithm;
 import com.cloud.entity.Chromosome;
 import com.cloud.entity.ReadOnlyData;
@@ -41,19 +39,33 @@ public class Application {
             initIns(dnsgaiib.accessibleIns);
             dnsgaiib.random = new Random(i);
 
-            FOGMP fogmp = new FOGMP("fogmp" + i);
+            DNSGAIIgIDG idg = new DNSGAIIgIDG("idg"+i, 0.5, 0.5);
+            initIns(idg.accessibleIns);
+            idg.random = new Random(i);
+
+            FOGMP fogmp = new FOGMP("fogmp" + i, new Random(i));
             initIns(fogmp.accessibleIns);
-            fogmp.random = new Random(i);
+
+            MBNSGAII mbnsgaii = new MBNSGAII("mb" + i);
+            initIns(mbnsgaii.accessibleIns);
+            mbnsgaii.random = new Random(i);
 
             AlgorithmThreadPool.submit(dnsgaiib);
             AlgorithmThreadPool.submit(fogmp);
+            AlgorithmThreadPool.submit(idg);
+            AlgorithmThreadPool.submit(mbnsgaii);
         }
         List<Double> fogmp = new ArrayList<>();
         List<Double> dnsgaiib = new ArrayList<>();
+        List<Double> idg = new ArrayList<>();
+        List<Double> mb = new ArrayList<>();
 
         for(int i=0;i<10;++i) {
             List<List<double[]>> fronts1 = (List<List<double[]>>) AlgorithmThreadPool.getResult("fogmp"+i).map.get("fronts");
             List<List<double[]>> fronts2 = (List<List<double[]>>) AlgorithmThreadPool.getResult("dnsgaiib"+i).map.get("fronts");
+            List<List<double[]>> fronts3 = (List<List<double[]>>) AlgorithmThreadPool.getResult("idg"+i).map.get("fronts");
+            List<List<double[]>> fronts4 = (List<List<double[]>>) AlgorithmThreadPool.getResult("mb"+i).map.get("fronts");
+
             double maxMakeSpan = 0;
             double maxCost = 0;
             double minMakeSpan = Double.MAX_VALUE;
@@ -77,27 +89,58 @@ public class Application {
                 }
             }
 
+            for(List<double[]> list3:fronts3){
+                for(double[] c:list3){
+                    maxMakeSpan = Math.max(maxMakeSpan, c[0]);
+                    minMakeSpan = Math.min(minMakeSpan, c[0]);
+                    maxCost = Math.max(maxCost, c[1]);
+                    minCost = Math.min(minCost, c[1]);
+                }
+            }
+
+            for(List<double[]> list4:fronts4){
+                for(double[] c:list4){
+                    maxMakeSpan = Math.max(maxMakeSpan, c[0]);
+                    minMakeSpan = Math.min(minMakeSpan, c[0]);
+                    maxCost = Math.max(maxCost, c[1]);
+                    minCost = Math.min(minCost, c[1]);
+                }
+            }
+
             List<Double> hv1 = ChromosomeUtils.getHV(fronts1, maxMakeSpan, minMakeSpan, maxCost, minCost);
             List<Double> hv2 = ChromosomeUtils.getHV(fronts2, maxMakeSpan, minMakeSpan, maxCost, minCost);
+            List<Double> hv3 = ChromosomeUtils.getHV(fronts3, maxMakeSpan, minMakeSpan, maxCost, minCost);
+            List<Double> hv4 = ChromosomeUtils.getHV(fronts4, maxMakeSpan, minMakeSpan, maxCost, minCost);
+
+
             for(int j=0;j<hv1.size();++j){
                 if(i==0) {
                     fogmp.add(hv1.get(j));
                     dnsgaiib.add(hv2.get(j));
+                    idg.add(hv3.get(j));
+                    mb.add(hv4.get(j));
                 }else {
                     fogmp.set(j,fogmp.get(j)+hv1.get(j));
                     dnsgaiib.set(j,dnsgaiib.get(j)+hv2.get(j));
+                    idg.set(j,idg.get(j)+hv3.get(j));
+                    mb.set(j,mb.get(j)+hv4.get(j));
                 }
             }
         }
         for(int i=0;i< fogmp.size();++i){
             fogmp.set(i,fogmp.get(i)/10);
             dnsgaiib.set(i, dnsgaiib.get(i)/10);
+            idg.set(i, idg.get(i)/10);
+            mb.set(i,mb.get(i)/10);
         }
 
 
 
         IOUtils.writeHVToFile(fogmp,"src/main/resources/result/result_fogmp.txt");
         IOUtils.writeHVToFile(dnsgaiib,"src/main/resources/result/result_nsgaiib.txt");
+        IOUtils.writeHVToFile(idg,"src/main/resources/result/result_idg.txt");
+        IOUtils.writeHVToFile(mb,"src/main/resources/result/result_mb.txt");
+
 
 
 

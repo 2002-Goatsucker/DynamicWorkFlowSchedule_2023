@@ -29,20 +29,37 @@ public class CrashSimilarityRepair implements Repair {
             disabledIns = dnsgaii.disabledIns;
             random = dnsgaii.random;
             tasks = dnsgaii.tasks;
+            for (Chromosome chromosome : chromosomes) {
+                for (int i = 0; i < chromosome.getTask2ins().length; ++i) {
+                    if (disabledIns.contains(chromosome.getTask2ins()[i])) {
+                        chromosome.getTask2ins()[i] = getSimilarityIns(accessibleIns, chromosome.getTask2ins()[i], random);
+                    }
+                }
+                ChromosomeUtils.refresh(chromosome, tasks);
+            }
         }else if (algorithm instanceof FOGMP fogmp){
-            chromosomes = fogmp.ca;
             accessibleIns = fogmp.accessibleIns;
             disabledIns = fogmp.disabledIns;
             random = fogmp.random;
             tasks = fogmp.tasks;
-        }
-        for (Chromosome chromosome : chromosomes) {
-            for (int i = 0; i < chromosome.getTask2ins().length; ++i) {
-                if (disabledIns.contains(chromosome.getTask2ins()[i])) {
-                    chromosome.getTask2ins()[i] = getSimilarityIns(accessibleIns, chromosome.getTask2ins()[i], random);
+            for (Chromosome chromosome : fogmp.ca) {
+                for (int i = 0; i < chromosome.getTask2ins().length; ++i) {
+                    if (disabledIns.contains(chromosome.getTask2ins()[i])) {
+                        chromosome.getTask2ins()[i] = getSimilarityIns(accessibleIns, chromosome.getTask2ins()[i], random);
+                    }
                 }
+                ChromosomeUtils.refresh(chromosome, tasks);
             }
-            ChromosomeUtils.refresh(chromosome, tasks);
+            for (int i=0; i<fogmp.da.size();++i) {
+                Chromosome chromosome = fogmp.da.get(i);
+                for (int j = 0; j < chromosome.getTask2ins().length; ++j) {
+                    if (disabledIns.contains(chromosome.getTask2ins()[j])) {
+                        fogmp.da.remove(i);
+                        fogmp.da.add(i, ChromosomeUtils.getInitialChromosome(fogmp.graph,fogmp.accessibleIns,fogmp.random));
+                    }
+                }
+                ChromosomeUtils.refresh(chromosome, tasks);
+            }
         }
     }
 

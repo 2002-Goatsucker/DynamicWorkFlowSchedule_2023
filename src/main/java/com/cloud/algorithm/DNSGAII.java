@@ -56,7 +56,15 @@ public class DNSGAII extends Algorithm {
 
 //        List<Double> hv = ChromosomeUtils.getHV(all);
         Result result = new Result();
-        result.map.put("front", all.get(all.size()-1));
+        List<List<double[]>> fronts = new ArrayList<>();
+        for(List<Chromosome> list:all){
+            List<double[]> front = new ArrayList<>();
+            for(Chromosome chromosome:list){
+                front.add(new double[]{chromosome.getMakeSpan(),chromosome.getCost()});
+            }
+            fronts.add(front);
+        }
+        result.map.put("fronts", fronts);
         return result;
     }
 
@@ -173,8 +181,8 @@ public class DNSGAII extends Algorithm {
         try {
 
             while (son.size() < fa.size()) {
-                int num1 = random.nextInt(size);
-                int num2 = random.nextInt(size);
+                int num1 = random.nextInt(fa.size());
+                int num2 = random.nextInt(fa.size());
                 while (num1 == num2) {
                     num2 = random.nextInt(size);
                 }

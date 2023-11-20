@@ -45,6 +45,7 @@ public class DNSGAIIB extends DNSGAII{
             fronts.add(front);
         }
         result.map.put("fronts", fronts);
+        System.out.println("------NSGAIIB FINISH------");
         return result;
     }
 }

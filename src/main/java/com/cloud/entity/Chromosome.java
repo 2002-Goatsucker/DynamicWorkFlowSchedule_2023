@@ -13,6 +13,8 @@ public class Chromosome implements Cloneable {
     private double makeSpan;
     private double crowding;
     private double[] start = new double[100];
+
+    private int region = -1;
     private double[] end = new double[100];
     public double[] launchTime=new double[ReadOnlyData.insNum];
     public double[] shutdownTime=new double[ReadOnlyData.insNum];
@@ -171,5 +173,13 @@ public class Chromosome implements Cloneable {
 
     public void setCrowding(double crowding) {
         this.crowding = crowding;
+    }
+
+    public int getRegion() {
+        return region;
+    }
+
+    public void setRegion(int region) {
+        this.region = region;
     }
 }
