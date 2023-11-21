@@ -22,7 +22,7 @@ public class TaskGraph implements Cloneable{
     private boolean isBroken = false;
 
     //记录全部被添加的边
-    private final List<int[]> edges = new LinkedList<>();
+    public final List<int[]> edges = new LinkedList<>();
     public TaskGraph(int n) {
         //创建n个vertex放到数组中，并定义一个虚拟头节点vertex（-1）
         vertices = new Vertex[n];
@@ -36,11 +36,13 @@ public class TaskGraph implements Cloneable{
     //添加有向边：ver1->ver2
     //节点从0~n-1
     public void addEdge(int ver1, int ver2) {
-        vertices[ver1].next.add(vertices[ver2]);
-        vertices[ver2].fa.add(vertices[ver1]);
-        vertices[ver2].inner++;
-        vertices[ver1].outer++;
-        edges.add(new int[]{ver1,ver2});
+        if (!vertices[ver1].next.contains(vertices[ver2])){
+            vertices[ver1].next.add(vertices[ver2]);
+            vertices[ver2].fa.add(vertices[ver1]);
+            vertices[ver2].inner++;
+            vertices[ver1].outer++;
+            edges.add(new int[]{ver1,ver2});
+        }
     }
 
     //拓扑排序（随机拓扑）
@@ -75,6 +77,7 @@ public class TaskGraph implements Cloneable{
                 if (index != -1) {
                     addRandomNum(list, temp.id, random);
                 }
+
                 for (Vertex vertex : temp.next) {
                     //伪删除前驱节点
                     vertex.inner -= 1;
@@ -138,6 +141,16 @@ class Vertex{
     boolean isVisited = false;
     List<Vertex> next = new ArrayList<>();
     List<Vertex> fa = new ArrayList<>();
+
+//    @Override
+//    public int hashCode() {
+//        return id;
+//    }
+//
+//    @Override
+//    public boolean equals(Object obj) {
+//        return id == ((Vertex) obj).id;
+//    }
 
     public Vertex(int id) {
         this.id = id;

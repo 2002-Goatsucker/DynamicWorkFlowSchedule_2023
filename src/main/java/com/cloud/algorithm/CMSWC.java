@@ -1,9 +1,10 @@
 package com.cloud.algorithm;
 
 import com.cloud.algorithm.change.CMSWCInsAvailChange;
+import com.cloud.algorithm.repair.CrashSimilarityRepair;
 import com.cloud.algorithm.standard.Algorithm;
 import com.cloud.entity.*;
-import com.cloud.utils.CMSWCUtils;
+import com.cloud.utils.ChromosomeUtils;
 import com.cloud.utils.ESS.*;
 import com.cloud.utils.EliteStrategy;
 import com.cloud.utils.IOUtils;
@@ -11,52 +12,45 @@ import org.dom4j.Document;
 import org.dom4j.Element;
 import org.dom4j.io.SAXReader;
 
-import java.io.BufferedWriter;
-import java.io.FileWriter;
-import java.io.IOException;
 import java.util.*;
 
 import static com.cloud.entity.ReadOnlyData.types;
 
 public class CMSWC extends Algorithm {
-    public Task[] tasks;    //维护排好序的tasks
+    public Task[] tasks;    //原始任务排序
     public TaskGraph graph;
-    public int bw;
+    public List<List<Chromosome>> rank;
+    public int bw;  //用于估算rankU
     public int K;
     public int insType;
     public double exploitRate;
     public List<EliteStrategy> strategies;
-    public int [] insQuantity;
     public CMSWCInsAvailChange crash;
+    public CrashSimilarityRepair repair;
     public List<Integer> accessibleIns = new LinkedList<>();
-    public Set<Integer> disabledIns = new HashSet<>();
+    public List<Integer> disabledIns = new LinkedList<>();
+    public Random random;
+
     public CMSWC(String name) {
         super(name);
-        init();
     }
 
     @Override
     public Result execute() {
+        init();
         upwardRank(tasks);
-        Task [] unsortedTasks = new Task[tasks.length]; //unsortedTasks保留原task的index
-        for (int i = 0; i < tasks.length; i++) {
-            unsortedTasks[i] = tasks[i].clone();
-        }
-        Arrays.sort(tasks, (o1, o2) -> {
-            if (o1.getCmswcRank() - o2.getCmswcRank()>0)
-                return -1;
-            else return 1;
-        });
-        List<CMSWCSolution> solutions = null;
-        if (CMSWCUtils.checkTopology(tasks)){
-            solutions = TaskMapping(tasks,unsortedTasks);
-        }
+        int[] order = getOrder(tasks);
+        List<Chromosome> solutions = TaskMapping(order);
+
         Result result = new Result();
-        result.map.put("solutions", solutions);
+        List<double[]> front = new ArrayList<>();
+        for (Chromosome solution : solutions) {
+            front.add(new double[]{solution.getMakeSpan(), solution.getCost()});
+        }
+        result.map.put("front", front);
+        System.out.println("------CMSWC FINISH------");
         return result;
     }
-
-
 
     public void init() {
         input();
@@ -64,32 +58,20 @@ public class CMSWC extends Algorithm {
         K = IOUtils.readIntProperties("cmswc", "solution.number");
         insType = IOUtils.readIntProperties("cmswc", "ins.type");
         exploitRate = IOUtils.readDoubleProperties("cmswc", "exploitRate");
-        insQuantity = new int[types.length];
-        for(int i=0;i<8;++i){
-            String conf = "ins.quantity.type"+i;
-            int quantity = IOUtils.readIntProperties("dnsgaii-random",conf);
-            for(int j=0;j<quantity;++j){
-                ReadOnlyData.insToType.add(i);
-            }
-            insQuantity[i] = quantity;
-        }
-        for(int ins=0;ins<ReadOnlyData.insToType.size();++ins){
-            accessibleIns.add(ins);
-        }
-        ReadOnlyData.insNum = accessibleIns.size();
         crash = new CMSWCInsAvailChange();
+        repair = new CrashSimilarityRepair();
         strategies = new ArrayList<>();
-        strategies.add(new ESS1());
-        strategies.add(new ESS2());
-        strategies.add(new ESS3());
-        strategies.add(new ESS4());
-        strategies.add(new ESS5());
-        strategies.add(new ESS6());
-        strategies.add(new ESS7());
+        strategies.add(new ESS1(random));
+        strategies.add(new ESS2(random));
+        strategies.add(new ESS3(random));
+        strategies.add(new ESS4(random));
+        strategies.add(new ESS5(random));
+        strategies.add(new ESS6(random));
+        strategies.add(new ESS7(random));
 
     }
 
-    public void input(){
+    public void input() {
         try {
             ResourceBundle bundle = ResourceBundle.getBundle("cmswc");
             int taskSize = IOUtils.readIntProperties("cmswc", "file.taskGraph.size");
@@ -134,10 +116,15 @@ public class CMSWC extends Algorithm {
         }
     }
 
+    public void upwardRank(Task[] tasks) {
+        for (Task t : tasks) {
+            t.setRank(calculateRankU(t));
+        }
+    }
 
-    public double calculateRankU(Task t){
+    public double calculateRankU(Task t) {
         double avgEtime = getAvgEtime(t);
-        if (t.getSuccessor().isEmpty()){
+        if (t.getSuccessor().isEmpty()) {
             return avgEtime;
         }
 
@@ -154,174 +141,204 @@ public class CMSWC extends Algorithm {
         return avgEtime + maxSucRank;
     }
 
-    private double getAvgEtime(Task t) {
+    public double getAvgEtime(Task t) {
         double totalEtime = 0;
         for (int i = 0; i < ReadOnlyData.types.length; i++) {
             totalEtime += t.getReferTime() / ReadOnlyData.types[i].cu;
         }
-        return totalEtime / 8;
+        return totalEtime / ReadOnlyData.types.length;
     }
 
-    public void upwardRank(Task[] tasks){
-        for (Task t : tasks) {
-            t.setCmswcRank(calculateRankU(t));
+    public int[] getOrder(Task[] tasks) {
+        Task[] originalTasks = new Task[tasks.length]; //unsortedTasks保留原task的index
+        int[] order = new int[tasks.length];
+        for (int i = 0; i < tasks.length; i++) {
+            originalTasks[i] = tasks[i].clone();
         }
+        Arrays.sort(originalTasks, (o1, o2) -> {
+            if (o1.getRank() - o2.getRank() > 0)
+                return -1;
+            else return 1;
+        });
+        for (int i = 0; i < tasks.length; i++) {
+            order[i] = originalTasks[i].getIndex();
+        }
+        return order;
     }
 
-    private List<CMSWCSolution> TaskMapping(Task[] tasks,Task[] unsortedTasks) {
-        List<CMSWCSolution> S = new ArrayList<>();
-        for (int i = 0; i < K; i++) {
-            S.add(new CMSWCSolution(unsortedTasks));                 //𝑆𝑒 ← (∅, ∅, 0, 0)
-        }
+    public List<Chromosome> TaskMapping(int[] order) {
         try {
-            for (int i = 0; i < tasks.length; i++) {  // each task
-                System.out.println("分配第"+i+"个任务...");
+            List<Chromosome> fa = new ArrayList<>();
+            for (int i = 0; i < K; i++) {
+                fa.add(new Chromosome(order, new int[order.length], accessibleIns));
+            }
+            for (int i = 0; i < tasks.length; i++) {
+//                System.out.println(i);
                 if (CMSWCInsAvailChange.crashTask.contains(i)){
                     crash.change(this);
-                    for (CMSWCSolution solution : S) {
-                        solution.repair(this);
-                    }
+                    repair.repair(this,fa);
                 }
-                ArrayList<CMSWCSolution> intermediateSolution = new ArrayList<>();  //S'← ∅
-                for (CMSWCSolution s: S) {   //each solution
-                    for (int j = 0; j < s.getInsPool().size(); j++) {
-                        for (int k = 0; k < s.getInsPool().get(j).size(); k++) {
-                            CMSWCSolution interSol = s.clone();
-                            interSol.getAssignedTask().add(tasks[i].getIndex());
-                            CMSWCVM vm = interSol.getInsPool().get(j).get(k);   //第j种类型的第k个实例
-                            int indexOfTask = tasks[i].getIndex();
-                            vm.getTaskList().add(indexOfTask);
-                            interSol.getTasks()[indexOfTask].setInsType(vm.getType());
-                            interSol.update();
-                            intermediateSolution.add(interSol);
-                        }
+                List<Chromosome> son = new ArrayList<>();
+                for (Chromosome parent : fa) {
+                    for (int ins : parent.getExistIns()) {
+                        Chromosome child = parent.clone();
+                        child.getTask2ins()[i] = ins;
+                        ChromosomeUtils.refresh(child, tasks);
+                        son.add(child);
                     }
 
-                    loop:for (int j = 0; j < ReadOnlyData.types.length; j++) {
-                        if (s.getAssignedQuantity()[j] < insQuantity[j]){
-                            CMSWCSolution interSol = s.clone();
-                            interSol.getAssignedTask().add(tasks[i].getIndex());
-                            int insIndex = j * 10 + interSol.getAssignedQuantity()[j];
-                            while(disabledIns.contains(insIndex)){
-                                insIndex++;
-                                if (insIndex >= insQuantity[j])
-                                    continue loop;
+                    for (int j = 0; j < types.length; j++) {//从unallocatedIns中获取新机器，并将其从中移除
+                        int ins = parent.getUnallocatedIns().get(0);
+                        for (int insIndex : parent.getUnallocatedIns()) {
+                            if (insIndex / 10 == j && !parent.getExistIns().contains(insIndex)) {
+                                ins = insIndex;
+                                break;
                             }
-                            CMSWCVM newIns = new CMSWCVM(j,insIndex);
-                            interSol.getAssignedQuantity()[j] += 1;
-                            int indexOfTask = tasks[i].getIndex();
-                            newIns.getTaskList().add(indexOfTask);
-                            interSol.getTasks()[indexOfTask].setInsType(j);
-                            interSol.getInsPool().get(j).add(newIns);
-                            interSol.getAssignedType().add(j);
-
-                            interSol.update();
-                            intermediateSolution.add(interSol);
                         }
+                        Chromosome child = parent.clone();
+                        child.getTask2ins()[i] = ins;
+                        child.getExistIns().add(ins);
+                        child.getUnallocatedIns().remove((Integer) ins);
+                        ChromosomeUtils.refresh(child, tasks);
+                        son.add(child);
                     }
                 }
-                List<List<CMSWCSolution>> rank = quickNondominatedSort(intermediateSolution); //选择前K个Pareto最优解
-                try(BufferedWriter out = new BufferedWriter(new FileWriter("src/main/resources/result/result_cmswc_"+i+".txt")))
-                {
-                    for(CMSWCSolution s: rank.get(0)){
-                        out.write(s.getMakeSpan() + " " + s.getCost()+"\n");
-
-                    }
-                } catch (IOException e) {
-                    throw new RuntimeException(e);
+                quickNondominatedSort(son);
+                fa.clear();
+                getNextGeneration(fa);
+                List<Chromosome> eliteSon = EliteStrategy(fa, i);
+                for (Chromosome chromosome : eliteSon) {
+                    ChromosomeUtils.refresh(chromosome,tasks);
                 }
-                S.clear();
-                int front = 0;
-                while (S.size() < K && front < rank.size()){
-                    if (S.size() + rank.get(front).size() > K){
-                        List<CMSWCSolution> rankk = SDEDensitySelection(rank.get(front),K- S.size());
-                        S.addAll(rankk);
-                        break;
-                    }
-                    S.addAll(rank.get(front));
-                    front++;
-                }
-                List<CMSWCSolution> S_ = EliteStudyStrategy(S);
-                S_.addAll(S);
+                eliteSon.addAll(fa);
                 if (i == tasks.length - 1){
-                    return quickNondominatedSort(S_).get(0);
+                    quickNondominatedSort(eliteSon);
+                    return rank.get(0);
                 } else {
-                    S = SDEDensitySelection(S_,K);
+                    fa = SDEDensitySelection(eliteSon,K);
                 }
             }
-            return S;
-        } catch (Exception e) {
+            return null;
+        } catch (CloneNotSupportedException e) {
             throw new RuntimeException(e);
         }
     }
 
-    private List<List<CMSWCSolution>> quickNondominatedSort(List<CMSWCSolution> intermediateSolution) {
-        List<List<CMSWCSolution>> rank = new ArrayList<>();
-        intermediateSolution.sort((a, b) -> Double.compare(a.getMakeSpan(), b.getMakeSpan()));
-        int i = 0;
-        while(!intermediateSolution.isEmpty()){
-            rank.add(new ArrayList<>());
-            rank.get(i).add(intermediateSolution.get(0));
-            double cost = intermediateSolution.get(0).getCost();
-            for (int j = 1; j < intermediateSolution.size(); j++) {
-                if (intermediateSolution.get(j).getCost() < cost){
-                    rank.get(i).add(intermediateSolution.get(j));
-                    cost = intermediateSolution.get(j).getCost();
+    public void quickNondominatedSort(List<Chromosome> list) {
+        for (Chromosome chromosome : list) {
+            chromosome.setBetterNum(0);
+            chromosome.setPoorNum(0);
+            chromosome.getPoor().clear();
+            chromosome.getBetter().clear();
+//            DataUtils.refresh(chromosome);
+        }
+        for (int i = 0; i < list.size(); ++i) {
+            Chromosome chromosome = list.get(i);
+            for (int j = i + 1; j < list.size(); ++j) {
+                Chromosome other = list.get(j);
+                if (chromosome.getMakeSpan() >= other.getMakeSpan()
+                        && chromosome.getCost() >= other.getCost()) {
+                    if (chromosome.getMakeSpan() - other.getMakeSpan() > 0.0000000001
+                            || chromosome.getCost() - other.getCost() > 0.0000000001) {
+                        setBetterAndPoor(other, chromosome);
+                    }
+                }
+                if (chromosome.getMakeSpan() <= other.getMakeSpan()
+                        && chromosome.getCost() <= other.getCost()
+                ) {
+                    if ((chromosome.getMakeSpan() - other.getMakeSpan()) < -0.000000001
+                            || chromosome.getCost() - other.getCost() < -0.000000001
+                    ) {
+                        setBetterAndPoor(chromosome, other);
+                    }
                 }
             }
-            for (CMSWCSolution solution : rank.get(i)) {
-                intermediateSolution.remove(solution);
+        }
+        rank = new LinkedList<>();
+        while (hasBetter(list)) {
+            LinkedList<Chromosome> rankList = new LinkedList<>();
+            List<Chromosome> temp = new LinkedList<>();
+            for (Chromosome chromosome : list) {
+                if (chromosome.getBetterNum() == 0) {
+                    chromosome.reduceBetter();
+                    rankList.add(chromosome);
+                    temp.add(chromosome);
+                }
             }
-            i++;
+            for (Chromosome chromosome : temp) {
+                for (Chromosome worse : chromosome.getPoor()) {
+                    worse.reduceBetter();
+                }
+            }
+            rank.add(rankList);
         }
-        return rank;
     }
-
-    private List<CMSWCSolution> SDEDensitySelection(List<CMSWCSolution> S, int n) {
-        int Phi = S.size();
-        List<CMSWCSolution> S_ = new ArrayList<>();
-        for (CMSWCSolution solution : S) {
-            solution.setCrowdingDist(0);
+    public void setBetterAndPoor(Chromosome better, Chromosome poor) {
+        better.getPoor().add(poor);
+        poor.getBetter().add(better);
+        better.addPoor();
+        poor.addBetter();
+    }
+    public boolean hasBetter(List<Chromosome> list) {
+        for (Chromosome chromosome : list) {
+            if (chromosome.getBetterNum() >= 0) return true;
         }
-        S.sort((a, b) -> Double.compare(a.getMakeSpan(), b.getMakeSpan()));
-        S.get(0).setCrowdingDist(Double.MAX_VALUE);
-        S.get(Phi - 1).setCrowdingDist(Double.MAX_VALUE);
+        return false;
+    }
+    public void getNextGeneration(List<Chromosome> fa) {
+        int front = 0;
+        while (fa.size() < K && front < rank.size()){
+            if (fa.size() + rank.get(front).size() > K){
+                List<Chromosome> rankk = SDEDensitySelection(rank.get(front),K- fa.size());
+                fa.addAll(rankk);
+                break;
+            }
+            fa.addAll(rank.get(front));
+            front++;
+        }
+    }
+    public List<Chromosome> SDEDensitySelection(List<Chromosome> fa, int n) {
+        int Phi = fa.size();
+        List<Chromosome> S_ = new ArrayList<>();
+        for (Chromosome solution : fa) {
+            solution.setCrowding(0);
+        }
+        fa.sort((a, b) -> Double.compare(a.getMakeSpan(), b.getMakeSpan()));
+        fa.get(0).setCrowding(Double.MAX_VALUE);
+        fa.get(Phi - 1).setCrowding(Double.MAX_VALUE);
         for (int i = 1; i < Phi - 1; i++) {
-            double S_l = S.get(i-1).SDE(S.get(i).getMakeSpan(),"makespan");
-            double S_r = S.get(i+1).SDE(S.get(i).getMakeSpan(),"makespan");
+            double S_l = fa.get(i-1).SDE(fa.get(i).getMakeSpan(),"makespan");
+            double S_r = fa.get(i+1).SDE(fa.get(i).getMakeSpan(),"makespan");
             double delta = S_r - S_l;
-            S.get(i).setCrowdingDist(S.get(i).getCrowdingDist() + delta / (S.get(Phi-1).getMakeSpan() - S.get(0).getMakeSpan()));
+            fa.get(i).setCrowding(fa.get(i).getCrowding() + delta / (fa.get(Phi-1).getMakeSpan() - fa.get(0).getMakeSpan()));
         }
-        S.sort((a, b) -> Double.compare(a.getCost(), b.getCost()));
-        S.get(0).setCrowdingDist(Double.MAX_VALUE);
-        S.get(Phi - 1).setCrowdingDist(Double.MAX_VALUE);
+        fa.sort((a, b) -> Double.compare(a.getCost(), b.getCost()));
+        fa.get(0).setCrowding(Double.MAX_VALUE);
+        fa.get(Phi - 1).setCrowding(Double.MAX_VALUE);
         for (int i = 1; i < Phi - 1; i++) {
-            double S_l = S.get(i-1).SDE(S.get(i).getCost(),"cost");
-            double S_r = S.get(i+1).SDE(S.get(i).getCost(),"cost");
+            double S_l = fa.get(i-1).SDE(fa.get(i).getCost(),"cost");
+            double S_r = fa.get(i+1).SDE(fa.get(i).getCost(),"cost");
             double delta = S_r - S_l;
-            S.get(i).setCrowdingDist(S.get(i).getCrowdingDist() + delta / (S.get(Phi-1).getCost() - S.get(0).getCost()));
+            fa.get(i).setCrowding(fa.get(i).getCrowding() + delta / (fa.get(Phi-1).getCost() - fa.get(0).getCost()));
         }
-        S.sort((a, b) -> Double.compare(b.getCrowdingDist(), a.getCrowdingDist()));
+        fa.sort((a, b) -> Double.compare(b.getCrowding(), a.getCrowding()));
         for (int i = 0; i < n; i++) {
-            S_.add(S.get(i));
+            S_.add(fa.get(i));
         }
         return S_;
     }
-
-    private List<CMSWCSolution> EliteStudyStrategy(List<CMSWCSolution> S) {
+    public List<Chromosome> EliteStrategy(List<Chromosome> list, int i){
         EliteStrategy strategy;
-        List<CMSWCSolution> S_ = new ArrayList<>();
-        for (CMSWCSolution solution : S) {
-            double t = ReadOnlyData.random.nextDouble();
-            if (t < exploitRate) { //choose from {ESS1,2,3,4}
-                strategy = strategies.get(ReadOnlyData.random.nextInt(4));
-            } else {            //choose from {ESS5,6,7}
-                strategy = strategies.get(4 + ReadOnlyData.random.nextInt(3));
+        List<Chromosome> eliteSon = new ArrayList<>();
+        for (Chromosome chromosome : list) {
+            double t = random.nextDouble();
+            if (t < exploitRate){
+                strategy = strategies.get(random.nextInt(4));
+            } else {
+                strategy = strategies.get(4 + random.nextInt(3));
             }
-            S_.add(strategy.applyStrategy(solution));
+            eliteSon.add(strategy.applyStrategy(chromosome,i,this));
         }
-
-        return S_;
+        return eliteSon;
     }
 }
-

@@ -90,12 +90,17 @@ public class DNSGAII extends Algorithm {
             }
         }
         all.add(list);
+//        IOUtils.writeFrontToFile(all.get(all.size()-1),"src/main/resources/result/result_dnsgaii.txt");
+
     }
 
     public void initPopulation(){
         while (fa.size() < size) {
             Chromosome chromosome = ChromosomeUtils.getInitialChromosome(graph, accessibleIns, random);
-            if (!fa.contains(chromosome)) fa.add(chromosome);
+            if (!fa.contains(chromosome)) {
+                ChromosomeUtils.refresh(chromosome, tasks);
+                fa.add(chromosome);
+            }
         }
     }
     //初始化种群大小，代数，变异率，任务图，初始化可用机器

@@ -50,21 +50,36 @@ public class Application {
             initIns(mbnsgaii.accessibleIns);
             mbnsgaii.random = new Random(i);
 
+            DMGA dmga = new DMGA("dmga" + i);
+            initIns(dmga.accessibleIns);
+            dmga.random = new Random(i);
+
             AlgorithmThreadPool.submit(dnsgaiib);
             AlgorithmThreadPool.submit(fogmp);
             AlgorithmThreadPool.submit(idg);
             AlgorithmThreadPool.submit(mbnsgaii);
+            AlgorithmThreadPool.submit(dmga);
         }
         List<Double> fogmp = new ArrayList<>();
         List<Double> dnsgaiib = new ArrayList<>();
         List<Double> idg = new ArrayList<>();
         List<Double> mb = new ArrayList<>();
+        List<Double> dmga = new ArrayList<>();
 
         for(int i=0;i<10;++i) {
             List<List<double[]>> fronts1 = (List<List<double[]>>) AlgorithmThreadPool.getResult("fogmp"+i).map.get("fronts");
             List<List<double[]>> fronts2 = (List<List<double[]>>) AlgorithmThreadPool.getResult("dnsgaiib"+i).map.get("fronts");
             List<List<double[]>> fronts3 = (List<List<double[]>>) AlgorithmThreadPool.getResult("idg"+i).map.get("fronts");
             List<List<double[]>> fronts4 = (List<List<double[]>>) AlgorithmThreadPool.getResult("mb"+i).map.get("fronts");
+            List<List<double[]>> fronts5 = (List<List<double[]>>) AlgorithmThreadPool.getResult("dmga"+i).map.get("fronts");
+//            List<double[]> fronts6 = (List<double[]>) AlgorithmThreadPool.getResult("cmswc"+i).map.get("front");
+
+            IOUtils.writeFrontToFile(fronts1.get(fronts1.size() - 1),"src/main/resources/result/front_fogmp.txt");
+            IOUtils.writeFrontToFile(fronts2.get(fronts2.size() - 1),"src/main/resources/result/front_dnsgaiib.txt");
+            IOUtils.writeFrontToFile(fronts3.get(fronts3.size() - 1),"src/main/resources/result/front_idg.txt");
+            IOUtils.writeFrontToFile(fronts4.get(fronts4.size() - 1),"src/main/resources/result/front_mb.txt");
+            IOUtils.writeFrontToFile(fronts5.get(fronts5.size() - 1),"src/main/resources/result/front_dmga.txt");
+//            IOUtils.writeFrontToFile(fronts6,"src/main/resources/result/front_cmswc.txt");
 
             double maxMakeSpan = 0;
             double maxCost = 0;
@@ -107,10 +122,20 @@ public class Application {
                 }
             }
 
+            for(List<double[]> list5:fronts5){
+                for(double[] c:list5){
+                    maxMakeSpan = Math.max(maxMakeSpan, c[0]);
+                    minMakeSpan = Math.min(minMakeSpan, c[0]);
+                    maxCost = Math.max(maxCost, c[1]);
+                    minCost = Math.min(minCost, c[1]);
+                }
+            }
+
             List<Double> hv1 = ChromosomeUtils.getHV(fronts1, maxMakeSpan, minMakeSpan, maxCost, minCost);
             List<Double> hv2 = ChromosomeUtils.getHV(fronts2, maxMakeSpan, minMakeSpan, maxCost, minCost);
             List<Double> hv3 = ChromosomeUtils.getHV(fronts3, maxMakeSpan, minMakeSpan, maxCost, minCost);
             List<Double> hv4 = ChromosomeUtils.getHV(fronts4, maxMakeSpan, minMakeSpan, maxCost, minCost);
+            List<Double> hv5 = ChromosomeUtils.getHV(fronts5, maxMakeSpan, minMakeSpan, maxCost, minCost);
 
 
             for(int j=0;j<hv1.size();++j){
@@ -119,11 +144,13 @@ public class Application {
                     dnsgaiib.add(hv2.get(j));
                     idg.add(hv3.get(j));
                     mb.add(hv4.get(j));
+                    dmga.add(hv5.get(j));
                 }else {
                     fogmp.set(j,fogmp.get(j)+hv1.get(j));
                     dnsgaiib.set(j,dnsgaiib.get(j)+hv2.get(j));
                     idg.set(j,idg.get(j)+hv3.get(j));
                     mb.set(j,mb.get(j)+hv4.get(j));
+                    dmga.set(j,dmga.get(j)+hv5.get(j));
                 }
             }
         }
@@ -132,6 +159,7 @@ public class Application {
             dnsgaiib.set(i, dnsgaiib.get(i)/10);
             idg.set(i, idg.get(i)/10);
             mb.set(i,mb.get(i)/10);
+            dmga.set(i,dmga.get(i)/10);
         }
 
 
@@ -140,6 +168,7 @@ public class Application {
         IOUtils.writeHVToFile(dnsgaiib,"src/main/resources/result/result_nsgaiib.txt");
         IOUtils.writeHVToFile(idg,"src/main/resources/result/result_idg.txt");
         IOUtils.writeHVToFile(mb,"src/main/resources/result/result_mb.txt");
+        IOUtils.writeHVToFile(dmga,"src/main/resources/result/result_dmga.txt");
 
 
 

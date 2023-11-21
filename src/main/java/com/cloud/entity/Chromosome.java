@@ -1,8 +1,8 @@
 package com.cloud.entity;
 
-import java.util.Arrays;
-import java.util.LinkedList;
-import java.util.List;
+import com.cloud.utils.ChromosomeUtils;
+
+import java.util.*;
 
 public class Chromosome implements Cloneable {
 
@@ -25,6 +25,8 @@ public class Chromosome implements Cloneable {
     private int betterNum;
     private int poorNum;
 
+    private List<Integer> existIns = new ArrayList<>();
+    private List<Integer> unallocatedIns = new ArrayList<>();
     public Chromosome() {
 
     }
@@ -34,6 +36,14 @@ public class Chromosome implements Cloneable {
         this.setTask2ins(task2ins);
         start = new double[order.length];
         end = new double[order.length];
+    }
+
+    public Chromosome(int[] order, int[] task2ins, List<Integer> accessibleIns) {
+        this.setTask(order);
+        this.setTask2ins(task2ins);
+        start = new double[order.length];
+        end = new double[order.length];
+        this.unallocatedIns = new ArrayList<>(accessibleIns);
     }
 
     public double[] getStart() {
@@ -122,7 +132,13 @@ public class Chromosome implements Cloneable {
         this.task2ins = task2ins;
     }
 
+    public List<Integer> getExistIns() {
+        return existIns;
+    }
 
+    public List<Integer> getUnallocatedIns() {
+        return unallocatedIns;
+    }
 
     @Override
     public Chromosome clone() throws CloneNotSupportedException {
@@ -136,6 +152,8 @@ public class Chromosome implements Cloneable {
         chromosome.shutdownTime=new double[ReadOnlyData.insNum];
         chromosome.cost = cost;
         chromosome.makeSpan = makeSpan;
+        chromosome.existIns = new ArrayList<>(this.existIns);
+        chromosome.unallocatedIns = new ArrayList<>(this.unallocatedIns);
         System.arraycopy(task, 0, chromosome.task, 0, task.length);
         System.arraycopy(task2ins, 0, chromosome.task2ins, 0, task2ins.length);
         System.arraycopy(start, 0, chromosome.start, 0, start.length);
@@ -181,5 +199,22 @@ public class Chromosome implements Cloneable {
 
     public void setRegion(int region) {
         this.region = region;
+    }
+
+    public double SDE(double objValue, String objective) {
+        // 实现SDE算法
+        double shiftedValue = objValue;
+        if (objective.equals("makespan")){
+            if (objValue < this.makeSpan){
+                shiftedValue = this.makeSpan;
+                return shiftedValue;
+            }
+        } else if (objective.equals("cost")){
+            if (objValue < this.cost){
+                shiftedValue = this.cost;
+                return shiftedValue;
+            }
+        }
+        return shiftedValue;
     }
 }

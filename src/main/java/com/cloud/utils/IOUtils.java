@@ -42,12 +42,12 @@ public class IOUtils {
     }
 
 
-    public static void writeFrontToFile(List<Chromosome> front, String path){
+    public static void writeFrontToFile(List<double[]> front, String path){
         try(BufferedWriter out = new BufferedWriter(new FileWriter(path)))
         {
 
-            for(Chromosome chromosome:front){
-                out.write(chromosome.getMakeSpan() + " " + chromosome.getCost()+"\n");
+            for(double[] s :front){
+                out.write(s[0] + " " + s[1]+"\n");
             }
 
         } catch (IOException e) {

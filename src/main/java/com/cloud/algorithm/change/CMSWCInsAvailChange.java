@@ -8,7 +8,6 @@ import com.cloud.utils.IOUtils;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Random;
-import java.util.Set;
 
 public class CMSWCInsAvailChange implements Change {
     public static final HashSet<Integer> crashTask=new HashSet<>();
@@ -27,14 +26,13 @@ public class CMSWCInsAvailChange implements Change {
     public void change(Algorithm algorithm) {
         CMSWC cmswc = (CMSWC) algorithm;
         List<Integer> accessibleIns = cmswc.accessibleIns;
-        Set<Integer> disabledIns = cmswc.disabledIns;
+        List<Integer> disabledIns = cmswc.disabledIns;
         int num  = (int) (accessibleIns.size() *severity);
         for(int i=0;i<num;++i){
             int index = random.nextInt(accessibleIns.size());
             int ins = accessibleIns.get(index);
             accessibleIns.remove(index);
             disabledIns.add(ins);
-            cmswc.insQuantity[ins/10] -= 1;
         }
     }
 }

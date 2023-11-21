@@ -1,9 +1,7 @@
 package com.cloud.utils;
-
-import com.cloud.entity.CMSWCSolution;
-
-import java.util.List;
+import com.cloud.algorithm.CMSWC;
+import com.cloud.entity.Chromosome;
 
 public interface EliteStrategy {
-    CMSWCSolution applyStrategy(CMSWCSolution solution);
+    Chromosome applyStrategy(Chromosome solution, int i, CMSWC algorithm);
 }

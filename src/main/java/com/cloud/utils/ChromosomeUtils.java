@@ -291,4 +291,17 @@ public class ChromosomeUtils {
 //        WriterUtils.write("src\\main\\resources\\output\\ParetoFront.txt",str.toString());
         return ans;
     }
+
+    public static boolean checkTopology(Task[] tasks) {
+        Set<Integer> set = new HashSet<>();
+        for (Task task : tasks) {
+            set.add(task.getIndex());
+            for (Integer suc : task.getSuccessor()) {
+                if (set.contains(suc)){
+                    return false;
+                }
+            }
+        }
+        return true;
+    }
 }

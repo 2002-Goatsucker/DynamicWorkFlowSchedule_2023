@@ -1,11 +1,9 @@
 package com.cloud.utils.ESS;
 
-import com.cloud.entity.CMSWCSolution;
-import com.cloud.entity.CMSWCVM;
+import com.cloud.algorithm.CMSWC;
+import com.cloud.entity.Chromosome;
 import com.cloud.utils.BaseEliteStrategy;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 /**
@@ -13,40 +11,43 @@ import java.util.Random;
  */
 public class ESS5 extends BaseEliteStrategy {
     Random random;
-    public ESS5() {
+    public ESS5(Random random) {
         super();
-        random = new Random(0);
+        this.random = random;
     }
 
     @Override
-    public CMSWCSolution applyStrategy(CMSWCSolution solution) {
+    public Chromosome applyStrategy(Chromosome chromosome, int i, CMSWC algorithm) {
         try {
-            CMSWCSolution ss = solution.clone();
-//            //随机选2个ins类型
-            List<Integer> assignedType = new ArrayList<>(ss.getAssignedType());
-            int randomType1 = assignedType.get(random.nextInt(assignedType.size()));
-            int randomType2 = assignedType.get(random.nextInt(assignedType.size()));
-            if (randomType1 != randomType2){
-                //随机选一个type1的ins
-                CMSWCVM vm1 = ss.getInsPool().get(randomType1).get(random.nextInt(ss.getInsPool().get(randomType1).size()));
-                //将vm1改成type2
-                vm1.setType(randomType2);
-                //将vm1中的task的type也改成type2
-                for (int integer : vm1.getTaskList()) {
-                    ss.getTasks()[integer].setInsType(randomType2);
-                }
-                //把vm1转移到insPool中的type2
-                ss.getInsPool().get(randomType1).remove(vm1);
-                ss.getInsPool().get(randomType2).add(vm1);
-                //如果type1类型为0，assignedType移除type1
-                if (ss.getInsPool().get(randomType1).size() == 0){
-                    ss.getAssignedType().remove(randomType1);
+            if (i == 0){
+                return chromosome.clone();
+            }
+            Chromosome chromosome1 = chromosome.clone();
+            int insIndex = chromosome1.getExistIns().get(random.nextInt(chromosome1.getExistIns().size()));
+            int type = insIndex / 10;
+            int anotherType = random.nextInt(8);
+            while(anotherType == type) anotherType = random.nextInt(8);
+            int newIns = chromosome1.getUnallocatedIns().get(0);
+            for (int j = 0; j < chromosome1.getUnallocatedIns().size(); j++) {
+                if (chromosome1.getUnallocatedIns().get(j) / 10 == anotherType){
+                    newIns = chromosome1.getUnallocatedIns().get(j);
+                    break;
                 }
             }
-            ss.update();
-            return ss;
+            for (int j = 0; j < chromosome1.getTask2ins().length; j++) {
+                if (chromosome1.getTask2ins()[j] == insIndex){
+                    chromosome1.getTask2ins()[j] = newIns;
+                }
+            }
+            chromosome1.getExistIns().add(newIns);
+            chromosome1.getExistIns().remove((Integer) insIndex);
+            chromosome1.getUnallocatedIns().add(insIndex);
+            chromosome1.getUnallocatedIns().remove((Integer) newIns);
+
+            return chromosome1;
         } catch (CloneNotSupportedException e) {
             throw new RuntimeException(e);
         }
+
     }
 }

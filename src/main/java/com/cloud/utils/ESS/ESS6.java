@@ -1,13 +1,9 @@
 package com.cloud.utils.ESS;
 
-import com.cloud.entity.CMSWCSolution;
-import com.cloud.entity.CMSWCVM;
+import com.cloud.algorithm.CMSWC;
+import com.cloud.entity.Chromosome;
 import com.cloud.utils.BaseEliteStrategy;
-import com.cloud.utils.CMSWCUtils;
-import com.cloud.utils.ChromosomeUtils;
 
-import java.util.ArrayList;
-import java.util.List;
 import java.util.Random;
 
 /**
@@ -15,63 +11,45 @@ import java.util.Random;
  */
 public class ESS6 extends BaseEliteStrategy {
     Random random;
-    public ESS6() {
+    public ESS6(Random random) {
         super();
-        random = new Random(0);
+        this.random = random;
     }
 
     @Override
-    public CMSWCSolution applyStrategy(CMSWCSolution solution) {
+    public Chromosome applyStrategy(Chromosome chromosome, int i, CMSWC algorithm) {
         try {
-            CMSWCSolution ss = solution.clone();
-            //随机选2个ins类型
-            List<Integer> assignedType = new ArrayList<>(ss.getAssignedType());
-            int randomType1 = assignedType.get(random.nextInt(assignedType.size()));
-            int randomType2 = assignedType.get(random.nextInt(assignedType.size()));
-            if (randomType1 != randomType2){
-                //分别随机选1个type1和type2的ins
-                CMSWCVM vm1 = ss.getInsPool().get(randomType1).get(random.nextInt(ss.getInsPool().get(randomType1).size()));
-                CMSWCVM vm2 = ss.getInsPool().get(randomType2).get(random.nextInt(ss.getInsPool().get(randomType2).size()));
-                double Phi = random.nextDouble();
-                if (Phi < 0.5){
-                    //把vm2的task全给vm1
-                    for (int i = 0; i < vm2.getTaskList().size(); i++) {
-                        vm1.getTaskList().add(vm2.getTaskList().get(i));
-                        ss.getTasks()[vm2.getTaskList().get(i)].setInsType(randomType1);
-                    }
-                    ss.getInsPool().get(randomType2).remove(vm2);
-                    if (ss.getInsPool().get(randomType2).size() == 0){
-                        ss.getAssignedType().remove(randomType2);
-                    }
-                    //重新按rankU排序
-//                    if (!CMSWCUtils.checkTopology(CMSWCUtils.getTaskList(vm1.getTaskList(),ss.getTasks()))){
-//                        vm1.setTaskList(CMSWCUtils.randomTopologicalSort(vm1.getTaskList(),ss.getTasks()));
-//                        System.out.println(vm1.getTaskList());
-//                    }
-                    vm1.getTaskList().sort((a, b) -> Double.compare(ss.getTasks()[b].getCmswcRank(), ss.getTasks()[a].getCmswcRank()));
-
-                } else {
-                    //把vm1的task全给vm2
-                    for (int i = 0; i < vm1.getTaskList().size(); i++) {
-                        vm2.getTaskList().add(vm1.getTaskList().get(i));
-                        ss.getTasks()[vm1.getTaskList().get(i)].setInsType(randomType2);
-                    }
-                    ss.getInsPool().get(randomType1).remove(vm1);
-                    if (ss.getInsPool().get(randomType1).size() == 0){
-                        ss.getAssignedType().remove(randomType1);
-                    }
-                    //重新按rankU排序
-//                    if (!CMSWCUtils.checkTopology(CMSWCUtils.getTaskList(vm2.getTaskList(),ss.getTasks())))
-//                        vm2.setTaskList(CMSWCUtils.randomTopologicalSort(vm2.getTaskList(),ss.getTasks()));
-                    vm2.getTaskList().sort((a, b) -> Double.compare(ss.getTasks()[b].getCmswcRank(), ss.getTasks()[a].getCmswcRank()));
-                }
+            if (i == 0){
+                return chromosome.clone();
             }
-            ss.update();
-            return ss;
+            Chromosome chromosome1 = chromosome.clone();
+            int ins1 = chromosome1.getExistIns().get(random.nextInt(chromosome1.getExistIns().size()));
+            int ins2 = chromosome1.getExistIns().get(random.nextInt(chromosome1.getExistIns().size()));
+            double Phi = random.nextDouble();
+            if (Phi <= 0.5){    //ins1 -> ins2
+                for (int j = 0; j < chromosome1.getTask2ins().length; j++) {
+                    if (chromosome1.getTask2ins()[j] == ins1){
+                        chromosome1.getTask2ins()[j] = ins2;
+                    }
+                }
+                chromosome1.getExistIns().remove((Integer) ins1);
+                chromosome1.getUnallocatedIns().add(ins1);
+            } else {    //ins2 -> ins1
+                for (int j = 0; j < chromosome1.getTask2ins().length; j++) {
+                    if (chromosome1.getTask2ins()[j] == ins2){
+                        chromosome1.getTask2ins()[j] = ins1;
+                    }
+                }
+                chromosome1.getExistIns().remove((Integer) ins2);
+                chromosome1.getUnallocatedIns().add(ins2);
+            }
+            return chromosome1;
         } catch (CloneNotSupportedException e) {
             throw new RuntimeException(e);
         }
+
     }
+
 }
 //[17, 41, 65]
 //[79, 0, 7, 31, 17, 41, 65]
