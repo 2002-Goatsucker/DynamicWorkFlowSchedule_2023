@@ -1,8 +1,11 @@
 package com.cloud.algorithm;
 
 import com.cloud.algorithm.change.CMSWCInsAvailChange;
+import com.cloud.algorithm.repair.CrashRandomRepair;
 import com.cloud.algorithm.repair.CrashSimilarityRepair;
 import com.cloud.algorithm.standard.Algorithm;
+import com.cloud.algorithm.standard.Change;
+import com.cloud.algorithm.standard.Repair;
 import com.cloud.entity.*;
 import com.cloud.utils.ChromosomeUtils;
 import com.cloud.utils.ESS.*;
@@ -25,8 +28,8 @@ public class CMSWC extends Algorithm {
     public int insType;
     public double exploitRate;
     public List<EliteStrategy> strategies;
-    public CMSWCInsAvailChange crash;
-    public CrashSimilarityRepair repair;
+    public Change crash;
+    public CrashRandomRepair repair;
     public List<Integer> accessibleIns = new LinkedList<>();
     public List<Integer> disabledIns = new LinkedList<>();
     public Random random;
@@ -59,7 +62,7 @@ public class CMSWC extends Algorithm {
         insType = IOUtils.readIntProperties("cmswc", "ins.type");
         exploitRate = IOUtils.readDoubleProperties("cmswc", "exploitRate");
         crash = new CMSWCInsAvailChange();
-        repair = new CrashSimilarityRepair();
+        repair = new CrashRandomRepair();
         strategies = new ArrayList<>();
         strategies.add(new ESS1(random));
         strategies.add(new ESS2(random));

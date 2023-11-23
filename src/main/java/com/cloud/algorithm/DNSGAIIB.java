@@ -19,7 +19,7 @@ public class DNSGAIIB extends DNSGAII{
     public Result execute() {
         init();
         if(change==null) change = new InsAvailChange();
-        if(repair==null) repair = new CrashSimilarityRepair();
+        if(repair==null) repair = new CrashRandomRepair();
         initPopulation();
         for(int i=0;i<generation;++i){
             if(change instanceof InsAvailChange){

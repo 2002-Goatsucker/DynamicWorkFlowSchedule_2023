@@ -2,7 +2,6 @@ package com.cloud;
 
 import com.cloud.algorithm.*;
 import com.cloud.algorithm.standard.Algorithm;
-import com.cloud.entity.Chromosome;
 import com.cloud.entity.ReadOnlyData;
 import com.cloud.entity.Type;
 import com.cloud.thread.AlgorithmThreadPool;
@@ -33,7 +32,7 @@ public class Application {
 //        dnsgaii.random = new Random(1);
 //        initIns(dnsgaii.accessibleIns);
         List<Algorithm> list = new ArrayList<>();
-        for(int i=0;i<10;++i){
+        for(int i=0;i<20;++i){
 
             DNSGAIIB dnsgaiib = new DNSGAIIB("dnsgaiib"+i);
             initIns(dnsgaiib.accessibleIns);
@@ -137,7 +136,6 @@ public class Application {
             List<Double> hv4 = ChromosomeUtils.getHV(fronts4, maxMakeSpan, minMakeSpan, maxCost, minCost);
             List<Double> hv5 = ChromosomeUtils.getHV(fronts5, maxMakeSpan, minMakeSpan, maxCost, minCost);
 
-
             for(int j=0;j<hv1.size();++j){
                 if(i==0) {
                     fogmp.add(hv1.get(j));
@@ -155,14 +153,12 @@ public class Application {
             }
         }
         for(int i=0;i< fogmp.size();++i){
-            fogmp.set(i,fogmp.get(i)/10);
-            dnsgaiib.set(i, dnsgaiib.get(i)/10);
-            idg.set(i, idg.get(i)/10);
-            mb.set(i,mb.get(i)/10);
-            dmga.set(i,dmga.get(i)/10);
+            fogmp.set(i,fogmp.get(i)/20);
+            dnsgaiib.set(i, dnsgaiib.get(i)/20);
+            idg.set(i, idg.get(i)/20);
+            mb.set(i,mb.get(i)/20);
+            dmga.set(i,dmga.get(i)/20);
         }
-
-
 
         IOUtils.writeHVToFile(fogmp,"src/main/resources/result/result_fogmp.txt");
         IOUtils.writeHVToFile(dnsgaiib,"src/main/resources/result/result_nsgaiib.txt");

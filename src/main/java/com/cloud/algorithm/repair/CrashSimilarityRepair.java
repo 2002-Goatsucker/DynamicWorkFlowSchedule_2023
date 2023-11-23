@@ -64,22 +64,6 @@ public class CrashSimilarityRepair implements Repair {
         }
     }
 
-    public void repair(CMSWC cmswc, List<Chromosome> fa){
-        List<Chromosome> chromosomes = null;
-        List<Integer> accessibleIns = cmswc.accessibleIns;
-        List<Integer> disabledIns = cmswc.disabledIns;
-        Random random = cmswc.random;
-        Task[] tasks = cmswc.tasks;
-        for (Chromosome chromosome : fa) {
-            for (int i = 0; i < chromosome.getTask2ins().length; ++i) {
-                if (disabledIns.contains(chromosome.getTask2ins()[i])) {
-                    chromosome.getTask2ins()[i] = getSimilarityIns(accessibleIns, chromosome.getTask2ins()[i], random);
-                }
-            }
-            ChromosomeUtils.refresh(chromosome, tasks);
-        }
-
-    }
     public int getSimilarityIns(List<Integer> accessibleIns, int ins, Random random){
         Type type = ReadOnlyData.types[ReadOnlyData.insToType.get(ins)];
         double min = Double.MAX_VALUE;
