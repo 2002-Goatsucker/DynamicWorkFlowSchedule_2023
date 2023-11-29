@@ -50,7 +50,9 @@ public class CMSWC extends Algorithm {
         for (Chromosome solution : solutions) {
             front.add(new double[]{solution.getMakeSpan(), solution.getCost()});
         }
-        result.map.put("front", front);
+        List<List<double[]>> ans = new ArrayList<>();
+        ans.add(front);
+        result.map.put("fronts", ans);
         System.out.println("------CMSWC FINISH------");
         return result;
     }

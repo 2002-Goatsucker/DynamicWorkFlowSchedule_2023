@@ -16,7 +16,7 @@ public class AlgorithmThreadPool{
     private static final Map<String, CompletableFuture<Result>> results = new HashMap<>();
 
     //使用的线程池
-    private static final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(8, 8, 1, TimeUnit.MINUTES, new ArrayBlockingQueue<>(100));
+    private static final ThreadPoolExecutor threadPool = new ThreadPoolExecutor(8, 8, 1, TimeUnit.MINUTES, new ArrayBlockingQueue<>(1000));
 
 
     //submit一个算法后，线程池会自动处理，将结果放到result中，该方法是阻塞式的

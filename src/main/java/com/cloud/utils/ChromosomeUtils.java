@@ -35,7 +35,6 @@ public class ChromosomeUtils {
             chromosome2 = (Chromosome) B.clone();
             crossoverOrder(chromosome1, chromosome2, random);
             crossoverIns(chromosome1, chromosome2, random);
-
         } catch (CloneNotSupportedException e) {
             e.printStackTrace();
         }
@@ -63,7 +62,6 @@ public class ChromosomeUtils {
             orderA[i] = B.getTask()[i];
             orderB[i] = A.getTask()[i];
         }
-        //这里我产生了一个问题，会不会在Chromosome里面把int[]改成List会更好
         for (int num : A.getTask()) {
             if (!isContains(orderA, 0, p, num)) {
                 orderA[cursorA] = num;
@@ -73,6 +71,9 @@ public class ChromosomeUtils {
 
         for (int num : B.getTask()) {
             if (!isContains(orderB, 0, p, num)) {
+                if(cursorB>=100){
+                    System.out.println();
+                }
                 orderB[cursorB] = num;
                 cursorB++;
             }
