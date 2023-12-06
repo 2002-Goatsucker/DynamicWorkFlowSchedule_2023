@@ -17,5 +17,5 @@ if __name__ == "__main__":
     plt.plot(x, data5)
     plt.legend(['DNSGAIIB', 'FOGMP', 'DNSGAIIgIDG', 'MBNSGAII','DMGA'])
     plt.title("Inspiral_100 80ins 0.08severity")
-    plt.savefig("C:\\Users\\徐璟源\\Desktop\\git repository\\DynamicScheduling_2023\\src\\main\\resources\\result\\fig.png")
+    plt.savefig("C:\\Users\\徐璟源\\Desktop\\git repository\\DynamicScheduling_2023\\src\\main\\resources\\result\\fig.pdf")
     plt.show()

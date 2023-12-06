@@ -13,6 +13,31 @@ public class IOUtils {
         return Integer.parseInt(bundle.getString(key));
     }
 
+    public static void clearFile(String path){
+        File file = new File(path);
+        if(!file.exists()) return;
+        try {
+            FileWriter writer = new FileWriter(file);
+            writer.write("");
+            writer.flush();
+            writer.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
+    public static void clearFile(File file){
+        if(!file.exists()) return;
+        try {
+            FileWriter writer = new FileWriter(file);
+            writer.write("");
+            writer.flush();
+            writer.close();
+        } catch (IOException e) {
+            throw new RuntimeException(e);
+        }
+    }
+
     public static double readDoubleProperties(String file, String key){
         ResourceBundle bundle = ResourceBundle.getBundle(file);
         return Double.parseDouble(bundle.getString(key));

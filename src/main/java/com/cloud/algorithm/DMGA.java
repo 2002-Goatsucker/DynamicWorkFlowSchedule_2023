@@ -30,16 +30,13 @@ public class DMGA extends DNSGAII {
     public Result execute() {
         super.execute();
         Result result = new Result();
-        List<List<double[]>> fronts = new ArrayList<>();
-        for (List<Chromosome> list : all) {
-            List<double[]> front = new ArrayList<>();
-            for (Chromosome chromosome : list) {
-                front.add(new double[]{chromosome.getMakeSpan(), chromosome.getCost()});
-            }
-            fronts.add(front);
+        List<double[]> front = new ArrayList<>();
+        for(Chromosome chromosome: all.get(all.size()-1)) {
+            front.add(new double[]{chromosome.getMakeSpan(), chromosome.getCost()});
         }
-        result.map.put("fronts", fronts);
-        System.out.println("------DMGA FINISH------");
+        result.map.put("front", front);
+        System.out.println("-------DMGA Finish-------");
+
         return result;
     }
 

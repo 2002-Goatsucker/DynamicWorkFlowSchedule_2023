@@ -20,7 +20,7 @@ public class ChromosomeUtils {
             for (int i = 0; i < ins.length; ++i) {
                 ins[i] = accessibleIns.get(random.nextInt(accessibleIns.size()));
             }
-        }else {
+        } else {
             int insNum = accessibleIns.get(random.nextInt(accessibleIns.size()));
             Arrays.fill(ins, insNum);
         }
@@ -53,8 +53,8 @@ public class ChromosomeUtils {
         //random is a random number generator
         //p is the cut position
         int p = random.nextInt(n);
-        int cursorA = p+1;
-        int cursorB = p+1;
+        int cursorA = p + 1;
+        int cursorB = p + 1;
         int[] orderA = new int[n];
         int[] orderB = new int[n];
         //
@@ -71,7 +71,7 @@ public class ChromosomeUtils {
 
         for (int num : B.getTask()) {
             if (!isContains(orderB, 0, p, num)) {
-                if(cursorB>=100){
+                if (cursorB >= 100) {
                     System.out.println();
                 }
                 orderB[cursorB] = num;
@@ -89,6 +89,7 @@ public class ChromosomeUtils {
         }
         return false;
     }
+
     public static void crossoverIns(Chromosome A, Chromosome B, Random random) {
         int n = A.getTask().length;
         int p = random.nextInt(n);
@@ -108,10 +109,10 @@ public class ChromosomeUtils {
             double r1 = random.nextDouble(0, 1);
             double r2 = random.nextDouble(0, 1);
 //            double r3 = random.nextDouble(0, 1);
-            if (r1 < mutateRate){
+            if (r1 < mutateRate) {
                 mutateOrder(chromosome, tasks, random);
             }
-            if (r2 < mutateRate){
+            if (r2 < mutateRate) {
                 mutateIns(chromosome, random, accessibleIns);
             }
 //            if (r3 < rate){
@@ -124,7 +125,8 @@ public class ChromosomeUtils {
         assert chromosome != null;
         return chromosome;
     }
-    public static void mutateOrder(Chromosome X,Task[] tasks, Random random) {
+
+    public static void mutateOrder(Chromosome X, Task[] tasks, Random random) {
         int pos = random.nextInt(X.getTask().length);
         Chromosome nc = null;
         try {
@@ -146,11 +148,11 @@ public class ChromosomeUtils {
         int temp = nc.getTask()[pos];
         if (posN < pos) {
             for (int i = pos; i > posN; i--) {
-                nc.getTask()[i] = nc.getTask()[i-1];
+                nc.getTask()[i] = nc.getTask()[i - 1];
             }
         } else if (pos < posN) {
-            for (int i = pos ; i < posN; i++) {
-                nc.getTask()[i] = nc.getTask()[i+1];
+            for (int i = pos; i < posN; i++) {
+                nc.getTask()[i] = nc.getTask()[i + 1];
             }
         }
         nc.getTask()[posN] = temp;
@@ -173,7 +175,7 @@ public class ChromosomeUtils {
         int[] ins_flags = new int[insNum];
         for (int ins_index : chromosome.getTask2ins()) {
             if (ins_flags[ins_index] == 0) {
-                int type_index =  ReadOnlyData.insToType.get(ins_index);
+                int type_index = ReadOnlyData.insToType.get(ins_index);
                 int hours = (int) ((chromosome.shutdownTime[ins_index] - chromosome.launchTime[ins_index]) / 3600) + 1;
                 sum += hours * ReadOnlyData.types[type_index].p;
                 ins_flags[ins_index] = 1;
@@ -214,13 +216,13 @@ public class ChromosomeUtils {
         List<Integer> preTaskIndexes = tasks[taskIndex].getPredecessor();
         int n = preTaskIndexes.size();
         int instanceIndex = chromosome.getTask2ins()[taskIndex];
-        int typeIndex =  ReadOnlyData.insToType.get(instanceIndex);
+        int typeIndex = ReadOnlyData.insToType.get(instanceIndex);
         double[] communicationTime = new double[n];
         double[] after_communicationTime = new double[n];
         for (int i = 0; i < n; i++) {
             int preTaskIndex = preTaskIndexes.get(i);
             int preInstanceIndex = chromosome.getTask2ins()[preTaskIndex];
-            int preTypeIndex =  ReadOnlyData.insToType.get(preInstanceIndex);
+            int preTypeIndex = ReadOnlyData.insToType.get(preInstanceIndex);
             double bw_min = Math.min(ReadOnlyData.types[typeIndex].bw, ReadOnlyData.types[preTypeIndex].bw);
             communicationTime[i] = tasks[preTaskIndex].getOutputSize() / bw_min;
             after_communicationTime[i] = chromosome.getEnd()[preTaskIndex] + communicationTime[i];
@@ -234,58 +236,77 @@ public class ChromosomeUtils {
         return max_after_communication_time;
     }
 
-    public static List<Double> getHV(List<List<double[]>> list, double maxMakeSpan, double minMakeSpan, double maxCost, double minCost){
+    public static List<Double> getAllHV(List<List<double[]>> list, double maxMakeSpan, double minMakeSpan, double maxCost, double minCost) {
         List<Double> ans = new LinkedList<>();
-        for(List<double[]> chromosomes:list){
+        for (List<double[]> chromosomes : list) {
             chromosomes.sort(Comparator.comparingDouble(x -> x[0]));
-            double makespan[]=new double[chromosomes.size()];
+            double makespan[] = new double[chromosomes.size()];
             double cost[] = new double[chromosomes.size()];
             //按照makespan的顺序计算HV
-            for(int i=0;i<chromosomes.size();++i){
+            for (int i = 0; i < chromosomes.size(); ++i) {
                 double makespan_i = chromosomes.get(i)[0];
                 double cost_i = chromosomes.get(i)[1];
-                makespan[i] = (makespan_i-minMakeSpan)/(maxMakeSpan-minMakeSpan);
-                cost[i] = (cost_i-minCost)/(maxCost-minCost);
+                makespan[i] = (makespan_i - minMakeSpan) / (maxMakeSpan - minMakeSpan);
+                cost[i] = (cost_i - minCost) / (maxCost - minCost);
             }
-            double HV = (1.1-makespan[0])*(1.1-cost[0]);
-            for(int i=1;i<makespan.length;++i){
-                HV+=(1.1-makespan[i])*(cost[i-1]-cost[i]);
+            double HV = (1.1 - makespan[0]) * (1.1 - cost[0]);
+            for (int i = 1; i < makespan.length; ++i) {
+                HV += (1.1 - makespan[i]) * (cost[i - 1] - cost[i]);
             }
             ans.add(HV);
         }
         return ans;
     }
 
-    public static List<Double> getHV(List<List<Chromosome>> list){
+    public static double getHV(List<double[]> chromosomes, double maxMakeSpan, double minMakeSpan, double maxCost, double minCost) {
+        double ans = 0;
+        chromosomes.sort(Comparator.comparingDouble(x -> x[0]));
+        double makespan[] = new double[chromosomes.size()];
+        double cost[] = new double[chromosomes.size()];
+        //按照makespan的顺序计算HV
+        for (int i = 0; i < chromosomes.size(); ++i) {
+            double makespan_i = chromosomes.get(i)[0];
+            double cost_i = chromosomes.get(i)[1];
+            makespan[i] = (makespan_i - minMakeSpan) / (maxMakeSpan - minMakeSpan);
+            cost[i] = (cost_i - minCost) / (maxCost - minCost);
+        }
+        double HV = (1.1 - makespan[0]) * (1.1 - cost[0]);
+        for (int i = 1; i < makespan.length; ++i) {
+            HV += (1.1 - makespan[i]) * (cost[i - 1] - cost[i]);
+        }
+        return HV;
+    }
+
+    public static List<Double> getHV(List<List<Chromosome>> list) {
         double maxMakeSpan = 0;
         double maxCost = 0;
         double minMakeSpan = Integer.MAX_VALUE;
         double minCost = Integer.MAX_VALUE;
         List<Double> ans = new LinkedList<>();
         //找到所有代中，最大和最小的值
-        for(List<Chromosome> chromosomes:list){
-            for(Chromosome chromosome:chromosomes){
-                maxMakeSpan = Math.max(maxMakeSpan,chromosome.getMakeSpan());
-                maxCost = Math.max(maxCost,chromosome.getCost());
-                minMakeSpan = Math.min(minCost,chromosome.getMakeSpan());
-                minCost = Math.min(minCost,chromosome.getCost());
+        for (List<Chromosome> chromosomes : list) {
+            for (Chromosome chromosome : chromosomes) {
+                maxMakeSpan = Math.max(maxMakeSpan, chromosome.getMakeSpan());
+                maxCost = Math.max(maxCost, chromosome.getCost());
+                minMakeSpan = Math.min(minCost, chromosome.getMakeSpan());
+                minCost = Math.min(minCost, chromosome.getCost());
             }
         }
         StringBuilder str = new StringBuilder();
-        for(List<Chromosome> chromosomes:list){
+        for (List<Chromosome> chromosomes : list) {
             chromosomes.sort(Comparator.comparingDouble(Chromosome::getMakeSpan));
-            double makespan[]=new double[chromosomes.size()];
+            double makespan[] = new double[chromosomes.size()];
             double cost[] = new double[chromosomes.size()];
             //按照makespan的顺序计算HV
-            for(int i=0;i<chromosomes.size();++i){
+            for (int i = 0; i < chromosomes.size(); ++i) {
                 double makespan_i = chromosomes.get(i).getMakeSpan();
                 double cost_i = chromosomes.get(i).getCost();
-                makespan[i] = (makespan_i-minMakeSpan)/(maxMakeSpan-minMakeSpan);
-                cost[i] = (cost_i-minCost)/(maxCost-minCost);
+                makespan[i] = (makespan_i - minMakeSpan) / (maxMakeSpan - minMakeSpan);
+                cost[i] = (cost_i - minCost) / (maxCost - minCost);
             }
-            double HV = (1.1-makespan[0])*(1.1-cost[0]);
-            for(int i=1;i<makespan.length;++i){
-                HV+=(1.1-makespan[i])*(cost[i-1]-cost[i]);
+            double HV = (1.1 - makespan[0]) * (1.1 - cost[0]);
+            for (int i = 1; i < makespan.length; ++i) {
+                HV += (1.1 - makespan[i]) * (cost[i - 1] - cost[i]);
             }
             ans.add(HV);
         }
@@ -298,7 +319,7 @@ public class ChromosomeUtils {
         for (Task task : tasks) {
             set.add(task.getIndex());
             for (Integer suc : task.getSuccessor()) {
-                if (set.contains(suc)){
+                if (set.contains(suc)) {
                     return false;
                 }
             }
